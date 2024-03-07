@@ -1,0 +1,23 @@
+# Mac trash
+.DS_Store 
+
+
+# Latex related
+.aux
+.bit
+.blg
+.bbl
+.lof
+.log
+.lot
+.glo
+.glx
+.gxg
+.gxs
+.idx
+.ilg
+.ind
+.out
+.url
+.svn
+.toc
