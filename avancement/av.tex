@@ -1,0 +1,80 @@
+% BASIC SETTINGS
+\documentclass[a4paper,12pt]{article} 
+\setlength {\marginparwidth }{2cm}
+\usepackage[utf8]{inputenc} 
+\usepackage{xcolor}
+\usepackage{color}
+% FORMAT SETTINGS
+\usepackage[margin=20mm]{geometry}
+%\setlength\parindent{0pt}
+\usepackage{titling}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linktoc=all,linkcolor=blue}
+\usepackage{graphicx}
+\usepackage{tcolorbox}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{lscape}
+\usepackage{todonotes}
+\usepackage[normalem]{ulem}
+
+
+\usepackage{tikz}
+\usetikzlibrary{shapes,automata,positioning,arrows.meta,petri,fit,trees,decorations.pathreplacing}
+
+
+
+\usepackage{titlesec}
+
+\setcounter{tocdepth}{4}
+\setcounter{secnumdepth}{4}
+
+\titleformat{\paragraph}
+{\normalfont\normalsize\bfseries}{\theparagraph}{1em}{}
+\titlespacing*{\paragraph}
+{0pt}{3.25ex plus 1ex minus .2ex}{1.5ex plus .2ex}
+
+
+% https://en.wikibooks.org/wiki/LaTeX/Source_Code_Listings
+\usepackage{listings}
+\definecolor{GrayCodeBlock}{RGB}{241,241,241}
+% default
+\lstset{ 
+  backgroundcolor=\color{GrayCodeBlock},
+}
+
+
+
+
+\newcommand{\bs}{\vspace*{\baselineskip}}
+
+\newcommand{\tdi}[1]{\todo[inline]{{#1}}{}}
+
+
+
+\title{Stage de fin d'études\\ \vspace*{20mm} \scalebox{2}{Rapport d'avancement}\\ \vspace*{20mm} Analyse des mémoires caches pour le WCET par identification de chemins créant des défauts de cache}
+\author{Elana Courtines}
+\date{7 mars 2024}
+
+
+\begin{document}
+
+\maketitle
+
+
+\section{Semaine 1}
+
+(Re)prise en main de OTAWA :
+
+\begin{itemize}
+    \item installation du logiciel sur ma machine ; découverte de bugs dans le fichier d'installation du fait de versions trop récentes de mes "applications" ;
+    \item avancement dans le tutoriel OTAWA ;
+    \item lecture des sections spécifiées dans la thèse de Clément BALLABRIGA sur l'analyse WCET
+    \item \sout{découverte de typst}
+    \item une partie du temps de la semaine a été \textit{emprunté} par l'écriture du rapport du projet long
+\end{itemize}
+
+
+
+
+\end{document}
