@@ -2,6 +2,7 @@
 #include <otawa/otawa.h>
 #include <otawa/app/Application.h>
 
+
 using namespace elm;
 using namespace otawa;
 
@@ -10,10 +11,18 @@ public:
   First(void): Application("first", Version(1, 0, 0)) { }
 
 protected:
-  void work(PropList &props) override {
-    Address addr = workspace()->process()->findLabel("main");
-    cout << "main found at " << addr << io::endl;
+  void work(const string &entry, PropList &props) override {
+    i++;
+    cout << "[" << i << "]";
+    Address addr = workspace()->process()->findLabel(entry);
+    cout << entry << " found at " << addr << io::endl;
   }
+
+private:
+  int i=0;
 };
 
-OTAWA_RUN(First)
+
+int main(int argc, char **argv) {
+  return First().manage(argc, argv);
+}

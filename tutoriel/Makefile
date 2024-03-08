@@ -4,7 +4,8 @@ LIBS += $(shell otawa-config --libs --rpath)
 all: first
 
 first: first.o
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS) 
+	$(CXX) $(CXXFLAGS) -o bin/$@ $^ $(LIBS)
+	rm first.o
 
 clean:
-	rm -f first first.o
+	rm -f bin/first
