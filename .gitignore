@@ -25,4 +25,7 @@
 *.fls
 *.fdb_latexmk
 
-*/bin
+bin/
+
+p1.dot
+p2.dot

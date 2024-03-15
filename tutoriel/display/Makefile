@@ -8,4 +8,4 @@ display: display.o
 	rm display.o
 
 clean:
-	rm -f bin/display
+	rm -f bin/display p1.dot p2.dot
