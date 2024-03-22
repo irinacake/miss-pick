@@ -71,11 +71,11 @@ void printbits(elm::t::uint64 n){
 }
 
 
-void printDom(CFG *g, string indent) {
+void printDom(CFG *g, string indent, bool dive) {
 	//cout << g << "(" << g->count() << ")" << io::endl;
 	for(auto v: *g){
-		if(v->isSynth()) {
-			printDom(v->toSynth()->callee(), indent + "\t");
+		if(v->isSynth() && dive) {
+			printDom(v->toSynth()->callee(), indent + "\t", dive);
     }
     cout << indent << "-> BB " << v->index() << " : ";
     printbits(DOM(v));
@@ -88,31 +88,55 @@ void initDom(CFG *g) {
 		if(v->isSynth()) {
 			initDom(v->toSynth()->callee());
 		}
-    DOM(v) = (1UL << nb_bb) - 1; // set the nb_bb first bits to 1, others to 0
+    if (v->isEntry()){
+      DOM(v) = 1 << v->index();
+    } else {
+      DOM(v) = (1UL << nb_bb) - 1; // set the nb_bb first bits to 1, others to 0 
+    }
   }
 }
 
 
 void computeDom(CFG *g) {
 
+  // compute DOM so long as there are changes
   bool change = true;
 
   while (change) {
+    // By default, there are no changes
+    change = false;
+
+    // for every BB in the CFG
     for(auto v: *g){
+
+      // If the BB is a call, compute the other CFG
       if(v->isSynth()) {
-        initDom(v->toSynth()->callee());
+        computeDom(v->toSynth()->callee());
       }
 
+      // initialize the new DOM value to all
       int newdom = -1L;
-      // newdom = newdom intersection 
+
+      // if it is an entry node, set the new DOM value to itself
       if (v->isEntry()){
         newdom = newdom & DOM(v);
       } else {
-        // for p in pred(v)
-          // newdom = newdom . dom(p)
+
+        // otherwise do the intersection of the DOM of all preds
+        for (auto e: v->inEdges()){
+          auto p = e->source();
+          newdom = newdom & DOM(p);
+        }
+      }
+      
+      // If there has been any change, loop again
+      if (DOM(v) != ((1 << v->index()) | newdom)){
+        change = true;
       }
 
-      DOM(v) = v->index() | newdom;
+      // update the DOM
+      DOM(v) = (1 << v->index()) | newdom;
+
     }
   }
 }
@@ -136,7 +160,13 @@ protected:
 
     initDom(maincfg);
 
-    printDom(maincfg, "");
+    printDom(maincfg, "", false);
+
+    computeDom(maincfg);
+    
+    cout << io::endl << "after computer" << io::endl;
+    
+    printDom(maincfg, "", false);
 
   }
 
