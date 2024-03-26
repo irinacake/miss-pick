@@ -4,6 +4,10 @@
 #include <otawa/prog/TextDecoder.h>
 #include <otawa/cfg/features.h>
 #include <otawa/cfg/Loop.h>
+#include <otawa/hard/features.h>
+#include <otawa/hard/CacheConfiguration.h>
+
+
 
 #include <elm/sys/FileItem.h>
 #include <elm/util/BitVector.h>
@@ -14,6 +18,41 @@ using namespace otawa;
 
 
 p::id<elm::t::uint64> KICK("KICK", -1L);
+
+
+class CacheState {
+public:
+  CacheState(const otawa::hard::Cache* icache): cache(icache)
+    { state = new otawa::hard::Cache::block_t[cache->blockBits()]; }
+
+  ~CacheState(){ delete [] state; }
+
+
+  void updateLRU(otawa::address_t toAdd){
+    auto tag = cache->block(toAdd);
+    // démarrer à zéro
+    // vérifier l'existence progressive
+    // si trouvé, alors faire des xch progressifs
+    if (tag){
+
+    }
+  }
+
+
+  const otawa::hard::Cache* getCache(){
+    return cache;
+  }
+
+
+private:
+  otawa::hard::Cache::block_t* state;
+  const otawa::hard::Cache* cache;
+};
+
+
+
+
+
 
 otawa::Block* cache[3] = {NULL,NULL,NULL};
 int cacheSize = 3;
@@ -37,6 +76,7 @@ void printbits(elm::t::uint64 n){
 }
 
 
+
 void printDom(CFG *g, string indent, bool dive) {
 	//cout << g << "(" << g->count() << ")" << io::endl;
 	for(auto v: *g){
@@ -47,6 +87,7 @@ void printDom(CFG *g, string indent, bool dive) {
     printbits(KICK(v));
   }
 }
+
 
 void initDom(CFG *g) {
   auto nb_bb = g->count();
@@ -74,6 +115,9 @@ void computeDom(CFG *g) {
     for (int i = 0; i < cacheSize; i++)
       cache[i] = NULL;
 
+    for (auto inst: *currB->toBasic()){
+      inst->address();
+    }
 
     while (!currB->isExit()){
 
@@ -116,24 +160,48 @@ public:
 protected:
   void work(const string &entry, PropList &props) override {
     
+    //otawa::VERBOSE(props) = true;
+    otawa::CACHE_CONFIG_PATH(props) = "mycache.xml";
+
+
     require(DECODED_TEXT);
     require(COLLECTED_CFG_FEATURE);
-    require(LOOP_INFO_FEATURE);
+    require(otawa::hard::CACHE_CONFIGURATION_FEATURE);
 
     auto cfgs = COLLECTED_CFG_FEATURE.get(workspace());
 
     auto maincfg = cfgs->entry();
     
 
+
+    //auto *mycache = new CacheState();
+
+
+    auto confs = hard::CACHE_CONFIGURATION_FEATURE.get(workspace());
+
+    auto icache = confs->instCache();
+
+    cout << icache->replacementPolicy() << io::endl;
+
+    //icache->cacheSize()
+
+    CacheState mycache(icache);
+
+    cout << "size : " << mycache.getCache()->blockBits() << endl;
+    
+    
+    /*
+
     initDom(maincfg);
 
-    printDom(maincfg, "", true);
+    printDom(maincfg, "", false);
 
     computeDom(maincfg);
     
     cout << io::endl << "after compute" << io::endl;
     
-    printDom(maincfg, "", true);
+    printDom(maincfg, "", false);
+    */
 
   }
 
