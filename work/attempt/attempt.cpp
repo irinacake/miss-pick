@@ -22,15 +22,38 @@ p::id<elm::t::uint64> KICK("KICK", -1L);
 
 class CacheState {
 public:
-  CacheState(const otawa::hard::Cache* icache): cache(icache)
-    { state = new otawa::hard::Cache::block_t[cache->blockBits()]; }
+  CacheState(const otawa::hard::Cache* icache): cache(icache), blockSize(icache->blockBits()), way((int)pow(2,icache->wayBits())) { 
+    state = new otawa::address_t[way * blockSize];
+
+    for (int i=0; i < way ; i++) {
+      cout << i << " : ";
+      for (int j=0; j < blockSize; j++){
+        cout << state[i * way + j] << "  ";
+      }
+      cout << endl;
+    }
+    cout << endl << endl;
+  }
 
   ~CacheState(){ delete [] state; }
 
 
-  void updateLRU(otawa::address_t toAdd){
-    auto tag = cache->block(toAdd);
+  void updateLRU(otawa::address_t toAdd, string indent){
+    auto tag = cache->block(toAdd) % cache->blockBits();
 
+    /*
+    cout << indent << "state (bf) : " << endl;
+    for (int i=0; i < way ; i++) {
+      cout << i << " : ";
+      for (int j=0; j < blockSize; j++){
+        cout << state[i * way + j] << "  ";
+      }
+      cout << endl;
+    }
+    */
+    
+
+    
     // démarrer à zéro
     // vérifier l'existence progressive
     // si trouvé, alors faire des xch progressifs
@@ -39,18 +62,29 @@ public:
     // there is no need to check the last entry of the state, it either gets deleted, or shifted to age 0
     // if the tag is found in the middle, break the search loop
     while (pos < cache->blockBits() - 1){ 
-      if (tag == state[pos]) break;
+      if (toAdd == state[tag * way + pos]) break;
       pos++;
     }
     
     // overwrite to simulate elements switch
     while (pos > 0){
-      state[pos] = state[pos-1];
+      state[tag * way + pos] = state[tag * way + pos-1];
       pos--;
     }
 
     // new tag has age 0
-    state[pos] = tag;
+    state[tag * way + pos] = toAdd;
+    
+
+    //cout << indent << "state (bf) : " << endl;
+    for (int i=0; i < way ; i++) {
+      cout << i << " : ";
+      for (int j=0; j < blockSize; j++){
+        cout << state[i * way + j] << "  ";
+      }
+      cout << endl;
+    }
+    cout << endl;
 
   }
 
@@ -59,11 +93,46 @@ public:
     return cache;
   }
 
+  otawa::address_t* getState(){
+    return state;
+  }
+
+  unsigned int getTag(otawa::address_t toAdd) {
+    return cache->block(toAdd) % cache->blockBits();
+  }
 
 private:
-  otawa::hard::Cache::block_t* state;
+  int way;
+  int blockSize;
+  otawa::address_t* state;
   const otawa::hard::Cache* cache;
 };
+
+
+
+
+
+
+void statetest(CFG *g, CacheState *mycache, string indent) {
+	//cout << g << "(" << g->count() << ")" << io::endl;
+  int currTag = -1;
+	for(auto v: *g){
+		if(v->isSynth()) {
+			//statetest(v->toSynth()->callee(), mycache, indent + "\t");
+    } else if (v->isBasic()) {
+      for (auto inst : *v->toBasic()){
+        cout << indent << "inst adr : " << inst->address() << endl;
+        cout << indent << "inst tag : " << mycache->getTag(inst->address()) << endl;
+        if (currTag != mycache->getTag(inst->address())){
+          mycache->updateLRU(inst->address(), indent);
+          currTag = mycache->getTag(inst->address());
+        } else {
+          cout << "cache hit" << endl << endl;
+        }
+      }
+    }
+  }
+}
 
 
 
@@ -203,8 +272,12 @@ protected:
 
     CacheState mycache(icache);
 
-    cout << "size : " << mycache.getCache()->blockBits() << endl;
+    //cout << "waybits : " << icache->wayBits() << endl;
     
+    statetest(maincfg, &mycache, "");
+    
+    
+
     
     /*
 
