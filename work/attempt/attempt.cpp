@@ -30,12 +30,28 @@ public:
 
   void updateLRU(otawa::address_t toAdd){
     auto tag = cache->block(toAdd);
+
     // démarrer à zéro
     // vérifier l'existence progressive
     // si trouvé, alors faire des xch progressifs
-    if (tag){
-
+    int pos = 0;
+    
+    // there is no need to check the last entry of the state, it either gets deleted, or shifted to age 0
+    // if the tag is found in the middle, break the search loop
+    while (pos < cache->blockBits() - 1){ 
+      if (tag == state[pos]) break;
+      pos++;
     }
+    
+    // overwrite to simulate elements switch
+    while (pos > 0){
+      state[pos] = state[pos-1];
+      pos--;
+    }
+
+    // new tag has age 0
+    state[pos] = tag;
+
   }
 
 
