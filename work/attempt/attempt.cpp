@@ -17,43 +17,28 @@ using namespace elm;
 using namespace otawa;
 
 
-p::id<elm::t::uint64> KICK("KICK", -1L);
-
 
 class CacheState {
 public:
-  CacheState(const otawa::hard::Cache* icache): cache(icache), blockSize(icache->blockBits()), way((int)pow(2,icache->wayBits())) { 
-    state = new otawa::address_t[way * blockSize];
+  CacheState(const otawa::hard::Cache* icache): cache(icache), nbSets(icache->setCount()), nbWays((int)pow(2,icache->wayBits())) { 
+  
+    state = AllocArray<otawa::hard::Cache::block_t>(nbSets * nbWays);
 
-    for (int i=0; i < way ; i++) {
-      cout << i << " : ";
-      for (int j=0; j < blockSize; j++){
-        cout << state[i * way + j] << "  ";
-      }
-      cout << endl;
-    }
-    cout << endl << endl;
+    
+
+    for (int e=0; e < (nbSets * nbWays); e++) {
+      state[e] = otawa::hard::Cache::block_t(-1);
+    } 
+ 
+    displayState();
   }
 
-  ~CacheState(){ delete [] state; }
-
+  ~CacheState(){ }
 
   void updateLRU(otawa::address_t toAdd, string indent){
-    auto tag = cache->block(toAdd) % cache->blockBits();
+    auto toAddSet = cache->set(toAdd);
+    auto toAddTag = cache->block(toAdd);
 
-    /*
-    cout << indent << "state (bf) : " << endl;
-    for (int i=0; i < way ; i++) {
-      cout << i << " : ";
-      for (int j=0; j < blockSize; j++){
-        cout << state[i * way + j] << "  ";
-      }
-      cout << endl;
-    }
-    */
-    
-
-    
     // démarrer à zéro
     // vérifier l'existence progressive
     // si trouvé, alors faire des xch progressifs
@@ -61,178 +46,130 @@ public:
     
     // there is no need to check the last entry of the state, it either gets deleted, or shifted to age 0
     // if the tag is found in the middle, break the search loop
-    while (pos < cache->blockBits() - 1){ 
-      if (toAdd == state[tag * way + pos]) break;
+    while (pos < nbWays - 1){ 
+      if (toAddTag == state[toAddSet * nbWays + pos]) break;
       pos++;
     }
     
     // overwrite to simulate elements switch
     while (pos > 0){
-      state[tag * way + pos] = state[tag * way + pos-1];
+      state[toAddSet * nbWays + pos] = state[toAddSet * nbWays + pos-1];
       pos--;
     }
 
     // new tag has age 0
-    state[tag * way + pos] = toAdd;
+    state[toAddSet * nbWays + pos] = toAddTag;
     
+    displayState();
+  }
 
-    //cout << indent << "state (bf) : " << endl;
-    for (int i=0; i < way ; i++) {
+
+
+  void displayState(){
+    for (int i=0; i < nbSets ; i++) {
       cout << i << " : ";
-      for (int j=0; j < blockSize; j++){
-        cout << state[i * way + j] << "  ";
+      for (int j=0; j < nbWays; j++){
+        cout << state[i * nbWays + j] << "  ";
       }
       cout << endl;
     }
     cout << endl;
-
   }
 
-
-  const otawa::hard::Cache* getCache(){
+  inline const otawa::hard::Cache* getCache(){
     return cache;
   }
 
-  otawa::address_t* getState(){
-    return state;
+  inline AllocArray<otawa::hard::Cache::block_t>* getState(){
+    return &state;
   }
 
-  unsigned int getTag(otawa::address_t toAdd) {
-    return cache->block(toAdd) % cache->blockBits();
+  inline otawa::hard::Cache::block_t getTag(otawa::address_t toAdd) {
+    return cache->block(toAdd);
+  }
+
+  inline otawa::hard::Cache::set_t getSet(otawa::address_t toAdd) {
+    return cache->set(toAdd);
+  }
+
+
+  void getSubState(){
+    //todo : make a "new" item
   }
 
 private:
-  int way;
-  int blockSize;
-  otawa::address_t* state;
+  int nbWays;
+  int nbSets;
+  AllocArray<otawa::hard::Cache::block_t> state;
+  //otawa::hard::Cache::block_t* state;
   const otawa::hard::Cache* cache;
 };
 
 
 
+class State {
+  public:
+  State(int size) {
+    state = new otawa::hard::Cache::block_t[size];
+  }
+  inline otawa::hard::Cache::block_t* getState(){
+    return state;
+  }
+
+  private:
+  otawa::hard::Cache::block_t* state;
+};
 
 
 
-void statetest(CFG *g, CacheState *mycache, string indent) {
-	//cout << g << "(" << g->count() << ")" << io::endl;
-  int currTag = -1;
+class SaveState {
+  public:
+  SaveState(const otawa::hard::Cache* icache) { 
+    saved = new List<State *> [icache->setCount()];
+  }
+
+  void add (State *newState) {
+    // TODO check if newState not already in saved
+    saved->add(newState);
+  }
+
+  private:
+  List<State *> *saved;
+};
+
+
+//p::id<SaveState> SAVED("SAVED", -1L);
+//List<int>
+
+
+
+
+
+
+void statetest(CFG *g, CacheState *mycache,
+              int currTag = -1, int currSet = -1, string indent = "") {
+
 	for(auto v: *g){
 		if(v->isSynth()) {
-			//statetest(v->toSynth()->callee(), mycache, indent + "\t");
+
+			//statetest(v->toSynth()->callee(), mycache, currTag, currSet, indent + "\t");
+
     } else if (v->isBasic()) {
       for (auto inst : *v->toBasic()){
+
         cout << indent << "inst adr : " << inst->address() << endl;
         cout << indent << "inst tag : " << mycache->getTag(inst->address()) << endl;
-        if (currTag != mycache->getTag(inst->address())){
+        cout << indent << "inst set : " << mycache->getSet(inst->address()) << endl;
+
+        if (currTag != mycache->getTag(inst->address())
+            || currSet != mycache->getSet(inst->address()) ){
           mycache->updateLRU(inst->address(), indent);
           currTag = mycache->getTag(inst->address());
+          currSet = mycache->getSet(inst->address());
         } else {
           cout << "cache hit" << endl << endl;
         }
       }
-    }
-  }
-}
-
-
-
-
-
-
-otawa::Block* cache[3] = {NULL,NULL,NULL};
-int cacheSize = 3;
-int currElem = 0;
-
-
-void printbits(elm::t::uint64 n){
-  auto i = 1UL << 63;
-  auto pcpt = 1;
-  while(i>0){
-    if(n&i)
-      cout << 1;
-    else 
-      cout << 0;
-    i >>= 1;
-    if (pcpt % 8 == 0)
-      cout << " ";
-    pcpt++;
-  }
-  cout << io::endl;
-}
-
-
-
-void printDom(CFG *g, string indent, bool dive) {
-	//cout << g << "(" << g->count() << ")" << io::endl;
-	for(auto v: *g){
-		if(v->isSynth() && dive) {
-			printDom(v->toSynth()->callee(), indent + "\t", dive);
-    }
-    cout << indent << "-> BB " << v->id() << " : ";
-    printbits(KICK(v));
-  }
-}
-
-
-void initDom(CFG *g) {
-  auto nb_bb = g->count();
-  for(auto v: *g){
-		if(v->isSynth()) {
-			initDom(v->toSynth()->callee());
-		}
-    KICK(v) = 0UL;
-  }
-}
-
-
-void computeDom(CFG *g) {
-
-  // compute KICK so long as there are changes
-  bool change = true;
-
-  while (change) {
-    // By default, there are no changes
-    change = false;
-
-    // start at the entry
-    auto currB = g->entry();
-    // reset the cache every time
-    for (int i = 0; i < cacheSize; i++)
-      cache[i] = NULL;
-
-    for (auto inst: *currB->toBasic()){
-      inst->address();
-    }
-
-    while (!currB->isExit()){
-
-      if (cache[currElem] == NULL){
-        cache[currElem] = currB;
-        currElem = (currElem + 1) % cacheSize;
-      } else {
-        if (KICK(cache[currElem]) != (KICK(cache[currElem]) | (1 << currB->id()))){
-          change = true;
-        }
-        KICK(cache[currElem]) = (KICK(cache[currElem]) | (1 << currB->id()) );
-        cache[currElem] = currB;
-        currElem = (currElem + 1) % cacheSize;
-      }
-
-      // comment sélectionner le prochain block
-      if (currB->countOuts() == 1) {
-        for (auto e: currB->outEdges())
-          currB = e->sink();
-      } else {
-        for (auto e: currB->outEdges()){
-          if (e->isTaken()) 
-            currB = e->sink();
-        }
-      }
-
-      if(currB->isSynth()) {
-        currB = currB->toSynth()->callee()->entry();
-      }
-
     }
   }
 }
@@ -270,11 +207,13 @@ protected:
 
     //icache->cacheSize()
 
+    cout << icache->setCount() << endl;
+
     CacheState mycache(icache);
 
     //cout << "waybits : " << icache->wayBits() << endl;
     
-    statetest(maincfg, &mycache, "");
+    statetest(maincfg, &mycache);
     
     
 
