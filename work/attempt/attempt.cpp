@@ -8,7 +8,7 @@
 #include <otawa/hard/CacheConfiguration.h>
 
 
-
+#include <elm/assert.h>
 #include <elm/sys/FileItem.h>
 #include <elm/util/BitVector.h>
 
@@ -32,7 +32,18 @@ class State {
   }
   friend elm::io::Output &operator<<(elm::io::Output &output, const State &state);
 
-  friend bool operator==(const State &state1, const State &state2);
+  bool equals(State* state2){
+    if (this->size == state2->size) {
+      for (int i = 0; i < this->size; i++) {
+        if (this->state[i] != state2->state[i] ) {
+          return false;
+        }
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
 
   private:
   int size;
@@ -40,24 +51,26 @@ class State {
 };
 
 elm::io::Output &operator<<(elm::io::Output &output, const State &state) {
+  output << "( ";
   for (int i = 0; i < state.size ; i++){
     output << state.state[i] << " ";
   }
+  output << ") ";
   return output;
 }
 
-bool operator==(const State &state1, const State &state2) {
-  if (state1.size == state2.size) {
-    for (int i = 0; i << state1.size; i++) {
-      if (state1.state[i] != state2.state[i] ) {
-        return false;
-      }
-    }
-    return true;
-  } else {
-    return false;
+
+namespace elm {
+template<>
+class Equiv<State *> {
+public:
+  static inline bool isEqual(State *state1, State *state2) {
+    return state1->equals(state2);
   }
+};
+
 }
+
 
 
 class SaveState {
@@ -75,7 +88,8 @@ class SaveState {
 
   void add(State *newState, int set) {
     // TODO check if newState not already in saved    
-    if (!saved[set].contains(newState)){
+    if (!(saved[set].contains(newState))){
+      cout << "state not yet contained" << endl;
       listSizes[set]++;
       saved[set].add(newState);
     }
@@ -90,11 +104,15 @@ class SaveState {
 };
 
 elm::io::Output &operator<<(elm::io::Output &output, const SaveState &saveState) {
+  output << "[ ";
   for (int i = 0; i < saveState.size ; i++){
+    output << "{ ";
     for (int j = 0; j < saveState.listSizes[i]; j++){
       output << *saveState.saved[i][j];
     }
+    output << "}";
   }
+  output << "]";
   return output;
 }
 
@@ -142,7 +160,7 @@ public:
     // new tag has age 0
     state[toAddSet * nbWays + pos] = toAddTag;
     
-    displayState();
+    //displayState();
   }
 
   void displayState(){
@@ -170,7 +188,6 @@ public:
   inline otawa::hard::Cache::set_t getSet(otawa::address_t toAdd) {
     return cache->set(toAdd);
   }
-
 
   State* getSubState(otawa::address_t toGet){
     //todo : make a "new" item
@@ -204,7 +221,7 @@ void printStates(CFG *g, CacheState *mycache,
 
   for(auto v: *g){
 		if(v->isSynth()) {
-			//printStates(v->toSynth()->callee(), mycache, currTag, currSet, indent + "\t");
+			printStates(v->toSynth()->callee(), mycache, currTag, currSet, indent + "\t");
     } else if (v->isBasic()) {
       for (auto inst : *v->toBasic()){
         if (currTag != mycache->getTag(inst->address())
@@ -247,7 +264,7 @@ void statetest(CFG *g, CacheState *mycache,
 
 	for(auto v: *g){
 		if(v->isSynth()) {
-			//statetest(v->toSynth()->callee(), mycache, currTag, currSet, indent + "\t");
+			statetest(v->toSynth()->callee(), mycache, currTag, currSet, indent + "\t");
     } else if (v->isBasic()) {
       for (auto inst : *v->toBasic()){
 
@@ -263,7 +280,8 @@ void statetest(CFG *g, CacheState *mycache,
           currSet = mycache->getSet(inst->address());
 
           State* newState = mycache->getSubState(inst->address());
-          cout << indent << "new state : " << newState << endl;
+          cout << indent << "current states : " << **SAVED(inst) << endl;
+          cout << indent << "new state : " << *newState << endl;
 
           SAVED(inst)->add(newState, currSet);
 
