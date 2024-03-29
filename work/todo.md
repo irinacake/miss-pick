@@ -5,3 +5,14 @@
 
 
 - get the first instruction of a cache block : calling updateLRU for the first inst of a BB may erronously assume that this first instruction of the BB is the first instruction of a cache block
+
+
+
+- don't use instructions for the property, use BB
+- in order to use BBs, every time a new BB is reached, check every instruction and update if a new tag is seen
+
+
+
+- stat: nombre d'états min/max/moy par ensemble selon les BB
+- stat: nombre d'états min/max/moy par ensemble global
+- ajouter des politiques

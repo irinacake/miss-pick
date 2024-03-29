@@ -87,9 +87,7 @@ class SaveState {
   }
 
   void add(State *newState, int set) {
-    // TODO check if newState not already in saved    
     if (!(saved[set].contains(newState))){
-      cout << "state not yet contained" << endl;
       listSizes[set]++;
       saved[set].add(newState);
     }
@@ -212,7 +210,6 @@ private:
 
 
 p::id<SaveState*> SAVED("SAVED");
-//List<int>
 
 
 
@@ -223,15 +220,18 @@ void printStates(CFG *g, CacheState *mycache,
 		if(v->isSynth()) {
 			printStates(v->toSynth()->callee(), mycache, currTag, currSet, indent + "\t");
     } else if (v->isBasic()) {
+      cout << indent << **SAVED(v) << endl;
+      
+      /*
       for (auto inst : *v->toBasic()){
         if (currTag != mycache->getTag(inst->address())
             || currSet != mycache->getSet(inst->address()) ){
           currTag = mycache->getTag(inst->address());
           currSet = mycache->getSet(inst->address());
 
-          cout << indent << **SAVED(inst) << endl;
         }
       }
+      */
     }
   }
 }
@@ -242,19 +242,21 @@ void initState(CFG *g, CacheState *mycache,
 		if(v->isSynth()) {
 			initState(v->toSynth()->callee(), mycache, currTag, currSet, indent + "\t");
     } else if (v->isBasic()) {
+      
+      SaveState* newSaveState = new SaveState;
+      
+      newSaveState->setCache(mycache->getCache());
+      
+      SAVED(v) = newSaveState;
+      /*
       for (auto inst : *v->toBasic()){
         if (currTag != mycache->getTag(inst->address())
             || currSet != mycache->getSet(inst->address()) ){
           currTag = mycache->getTag(inst->address());
           currSet = mycache->getSet(inst->address());
 
-          SaveState* newSaveState = new SaveState;
-          
-          newSaveState->setCache(mycache->getCache());
-          
-          SAVED(inst) = newSaveState;
         }
-      }
+      }*/
     }
   }
 }
@@ -266,11 +268,15 @@ void statetest(CFG *g, CacheState *mycache,
 		if(v->isSynth()) {
 			statetest(v->toSynth()->callee(), mycache, currTag, currSet, indent + "\t");
     } else if (v->isBasic()) {
+
+      currTag = -1;
+      currSet = -1;
+
       for (auto inst : *v->toBasic()){
 
-        cout << indent << "inst adr : " << inst->address() << endl;
-        cout << indent << "inst tag : " << mycache->getTag(inst->address()) << endl;
-        cout << indent << "inst set : " << mycache->getSet(inst->address()) << endl;
+        //cout << indent << "inst adr : " << inst->address() << endl;
+        //cout << indent << "inst tag : " << mycache->getTag(inst->address()) << endl;
+        //cout << indent << "inst set : " << mycache->getSet(inst->address()) << endl;
 
         if (currTag != mycache->getTag(inst->address())
             || currSet != mycache->getSet(inst->address()) ){
@@ -280,15 +286,15 @@ void statetest(CFG *g, CacheState *mycache,
           currSet = mycache->getSet(inst->address());
 
           State* newState = mycache->getSubState(inst->address());
-          cout << indent << "current states : " << **SAVED(inst) << endl;
-          cout << indent << "new state : " << *newState << endl;
+          //cout << indent << "current states : " << **SAVED(v) << endl;
+          //cout << indent << "new state : " << *newState << endl;
 
-          SAVED(inst)->add(newState, currSet);
+          SAVED(v)->add(newState, currSet);
 
         } else {
-          cout << indent << "-> cache hit!" << endl;
+          //cout << indent << "-> cache hit!" << endl;
         }
-        cout << endl << endl;
+        //cout << endl << endl;
       }
     }
   }
@@ -311,36 +317,21 @@ protected:
     require(otawa::hard::CACHE_CONFIGURATION_FEATURE);
 
     auto cfgs = COLLECTED_CFG_FEATURE.get(workspace());
-
     auto maincfg = cfgs->entry();
     
-
-
-    //auto *mycache = new CacheState();
-
-
     auto confs = hard::CACHE_CONFIGURATION_FEATURE.get(workspace());
-
     auto icache = confs->instCache();
-
-    cout << icache->replacementPolicy() << io::endl;
-
-    cout << icache->setCount() << endl;
-
     CacheState mycache(icache);
 
     
 
     initState(maincfg, &mycache);
-    
     statetest(maincfg, &mycache);
-
     printStates(maincfg, &mycache);
     
   }
 
 private:
-  int i=0;
 };
 
 
