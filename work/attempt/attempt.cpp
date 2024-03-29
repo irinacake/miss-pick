@@ -32,21 +32,32 @@ class State {
   }
   friend elm::io::Output &operator<<(elm::io::Output &output, const State &state);
 
+  friend bool operator==(const State &state1, const State &state2);
+
   private:
   int size;
   otawa::hard::Cache::block_t* state;
 };
 
 elm::io::Output &operator<<(elm::io::Output &output, const State &state) {
-  cout << "state ? size : " << state.size << endl;
-
   for (int i = 0; i < state.size ; i++){
     output << state.state[i] << " ";
   }
   return output;
 }
 
-
+bool operator==(const State &state1, const State &state2) {
+  if (state1.size == state2.size) {
+    for (int i = 0; i << state1.size; i++) {
+      if (state1.state[i] != state2.state[i] ) {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
 
 
 class SaveState {
@@ -64,8 +75,10 @@ class SaveState {
 
   void add(State *newState, int set) {
     // TODO check if newState not already in saved    
-    listSizes[set]++;
-    saved[set].add(newState);
+    if (!saved[set].contains(newState)){
+      listSizes[set]++;
+      saved[set].add(newState);
+    }
   }
 
   friend elm::io::Output &operator<<(elm::io::Output &output, const SaveState &saveState);
@@ -77,22 +90,13 @@ class SaveState {
 };
 
 elm::io::Output &operator<<(elm::io::Output &output, const SaveState &saveState) {
-  cout << "save state printer, size: " << saveState.size << endl;
-
   for (int i = 0; i < saveState.size ; i++){
     for (int j = 0; j < saveState.listSizes[i]; j++){
-      cout << "i : " << i << ", j : " << j << endl;
-      if (saveState.saved[i][j] == nullptr) {
-        output << "nullptr" << endl;
-      } else {
-        output << *saveState.saved[i][j];
-      }
+      output << *saveState.saved[i][j];
     }
   }
   return output;
 }
-
-
 
 
 
@@ -207,13 +211,8 @@ void printStates(CFG *g, CacheState *mycache,
             || currSet != mycache->getSet(inst->address()) ){
           currTag = mycache->getTag(inst->address());
           currSet = mycache->getSet(inst->address());
-          
 
-
-          SaveState* currSaveState = SAVED(inst);
-
-          cout << " curr save state " << currSaveState << " " << *currSaveState << endl;
-          //cout << indent << *(SAVED(inst)) << endl;
+          cout << indent << **SAVED(inst) << endl;
         }
       }
     }
@@ -265,12 +264,8 @@ void statetest(CFG *g, CacheState *mycache,
 
           State* newState = mycache->getSubState(inst->address());
           cout << indent << "new state : " << newState << endl;
-          //cout << indent << "SaveState of current inst : " << currSaveState << endl;
+
           SAVED(inst)->add(newState, currSet);
-
-
-          //SaveState* currSaveState = SAVED(inst);
-          //cout << indent << "current SaveState of inst : " << *currSaveState << endl;
 
         } else {
           cout << indent << "-> cache hit!" << endl;
