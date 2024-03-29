@@ -301,9 +301,9 @@ void statetest(CFG *g, CacheState *mycache,
 }
 
 
-class Attempt: public Application {
+class CacheAnalysis: public Application {
 public:
-  Attempt(void): Application("Attempt", Version(1, 0, 0)) { }
+  CacheAnalysis(void): Application("CacheAnalysis", Version(1, 0, 0)) { }
 
 protected:
   void work(const string &entry, PropList &props) override {
@@ -336,7 +336,7 @@ private:
 
 
 
-//OTAWA_RUN(Attempt)
+//OTAWA_RUN(CacheAnalysis)
 int main(int argc, char **argv) {
-  return Attempt().manage(argc, argv);
+  return CacheAnalysis().manage(argc, argv);
 }

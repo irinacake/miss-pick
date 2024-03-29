@@ -1,11 +1,11 @@
 CXXFLAGS += $(shell otawa-config --cflags) --std=c++11
 LIBS += $(shell otawa-config --libs --rpath)
 
-all: attempt
+all: cacheAnalysis
 
-attempt: attempt.o
+cacheAnalysis: cacheAnalysis.o
 	$(CXX) $(CXXFLAGS) -o bin/$@ $^ $(LIBS)
-	rm attempt.o
+	rm cacheAnalysis.o
 
 clean:
-	rm -f bin/attempt p1.dot p2.dot
+	rm -f bin/cacheAnalysis p1.dot p2.dot
