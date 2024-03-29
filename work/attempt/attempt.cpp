@@ -36,7 +36,10 @@ class State {
   int size;
   otawa::hard::Cache::block_t* state;
 };
+
 elm::io::Output &operator<<(elm::io::Output &output, const State &state) {
+  cout << "state ? size : " << state.size << endl;
+
   for (int i = 0; i < state.size ; i++){
     output << state.state[i] << " ";
   }
@@ -72,10 +75,18 @@ class SaveState {
   int* listSizes;
   List<State *> *saved;
 };
+
 elm::io::Output &operator<<(elm::io::Output &output, const SaveState &saveState) {
+  cout << "save state printer, size: " << saveState.size << endl;
+
   for (int i = 0; i < saveState.size ; i++){
     for (int j = 0; j < saveState.listSizes[i]; j++){
-      output << *saveState.saved[i][j];
+      cout << "i : " << i << ", j : " << j << endl;
+      if (saveState.saved[i][j] == nullptr) {
+        output << "nullptr" << endl;
+      } else {
+        output << *saveState.saved[i][j];
+      }
     }
   }
   return output;
@@ -157,13 +168,13 @@ public:
   }
 
 
-  State getSubState(otawa::address_t toGet){
+  State* getSubState(otawa::address_t toGet){
     //todo : make a "new" item
     auto toGetSet = cache->set(toGet);
-    State newState(nbWays);
+    State* newState = new State(nbWays);
     int pos = 0;
     while (pos < nbWays){ 
-      newState.setValue(pos,state[toGetSet * nbWays + pos]);
+      newState->setValue(pos,state[toGetSet * nbWays + pos]);
       pos++;
     }
     return newState;
@@ -194,20 +205,23 @@ void printStates(CFG *g, CacheState *mycache,
       for (auto inst : *v->toBasic()){
         if (currTag != mycache->getTag(inst->address())
             || currSet != mycache->getSet(inst->address()) ){
-          cout << indent << SAVED(inst) << endl;
           currTag = mycache->getTag(inst->address());
           currSet = mycache->getSet(inst->address());
+          
+
+
+          SaveState* currSaveState = SAVED(inst);
+
+          cout << " curr save state " << currSaveState << " " << *currSaveState << endl;
+          //cout << indent << *(SAVED(inst)) << endl;
         }
       }
     }
   }
 }
 
-
-
 void initState(CFG *g, CacheState *mycache,
               int currTag = -1, int currSet = -1, string indent = "") {
-
   for(auto v: *g){
 		if(v->isSynth()) {
 			initState(v->toSynth()->callee(), mycache, currTag, currSet, indent + "\t");
@@ -215,26 +229,14 @@ void initState(CFG *g, CacheState *mycache,
       for (auto inst : *v->toBasic()){
         if (currTag != mycache->getTag(inst->address())
             || currSet != mycache->getSet(inst->address()) ){
-          
           currTag = mycache->getTag(inst->address());
           currSet = mycache->getSet(inst->address());
-          
-
-          cout << "creating new saveState" << endl;
 
           SaveState* newSaveState = new SaveState;
-
-          cout << "done" << endl;
           
           newSaveState->setCache(mycache->getCache());
           
-          
-          // to remove
-          //State firstState = mycache->getSubState(inst->address());
-          //newSaveState.add(&firstState, currSet);
-
           SAVED(inst) = newSaveState;
-          
         }
       }
     }
@@ -261,14 +263,14 @@ void statetest(CFG *g, CacheState *mycache,
           currTag = mycache->getTag(inst->address());
           currSet = mycache->getSet(inst->address());
 
-          State newState = mycache->getSubState(inst->address());
+          State* newState = mycache->getSubState(inst->address());
           cout << indent << "new state : " << newState << endl;
           //cout << indent << "SaveState of current inst : " << currSaveState << endl;
-          SAVED(inst)->add(&newState, currSet);
+          SAVED(inst)->add(newState, currSet);
 
 
-          SaveState* currSaveState = SAVED(inst);
-          cout << indent << "current SaveState of inst : " << *currSaveState << endl;
+          //SaveState* currSaveState = SAVED(inst);
+          //cout << indent << "current SaveState of inst : " << *currSaveState << endl;
 
         } else {
           cout << indent << "-> cache hit!" << endl;
@@ -310,35 +312,18 @@ protected:
 
     cout << icache->replacementPolicy() << io::endl;
 
-    //icache->cacheSize()
-
     cout << icache->setCount() << endl;
 
     CacheState mycache(icache);
 
-    //cout << "waybits : " << icache->wayBits() << endl;
     
 
     initState(maincfg, &mycache);
+    
     statetest(maincfg, &mycache);
-    //printStates(maincfg, &mycache);
-    
-    
 
+    printStates(maincfg, &mycache);
     
-    /*
-
-    initDom(maincfg);
-
-    printDom(maincfg, "", false);
-
-    computeDom(maincfg);
-    
-    cout << io::endl << "after compute" << io::endl;
-    
-    printDom(maincfg, "", false);
-    */
-
   }
 
 private:
