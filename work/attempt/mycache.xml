@@ -3,6 +3,6 @@
 	<icache>
 		<block_bits>4</block_bits>
 		<way_bits>2</way_bits>
-		<row_bits>5</row_bits>
+		<row_bits>2</row_bits>
 	</icache>
 </cache-config>
