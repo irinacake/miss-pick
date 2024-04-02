@@ -14,6 +14,24 @@
 using namespace elm;
 using namespace otawa;
 
+void printbits(elm::t::uint64 n){
+  auto i = 1UL << 7;
+  auto pcpt = 1;
+  while(i>0){
+    if(n&i)
+      cout << 1;
+    else 
+      cout << 0;
+    i >>= 1;
+    if (pcpt % 8 == 0)
+      cout << " ";
+    pcpt++;
+  }
+  cout << io::endl;
+}
+
+
+
 
 /**
  * @class State
@@ -202,8 +220,17 @@ elm::io::Output &operator<<(elm::io::Output &output, const SaveState &saveState)
  */
 class CacheState {
 public:
-  CacheState(const otawa::hard::Cache* icache): cache(icache), nbSets(icache->setCount()), nbWays((int)pow(2,icache->wayBits())) { 
+  CacheState(const otawa::hard::Cache* icache): cache(icache), nbSets(icache->setCount()), nbWays((int)pow(2,icache->wayBits())), logNbWays(icache->wayBits()) { 
+    ASSERTP(logNbWays < 7, "CacheState: cache way limit is 2^6");
     state.allocate(nbSets * nbWays);
+
+    currIndexFIFO = new int[nbSets];
+    accessBitsPLRU = new elm::t::uint64[nbSets];
+    for (int e=0; e < nbSets; e++) {
+      currIndexFIFO[e] = 0;
+      accessBitsPLRU[e] = 0;
+    } 
+
     for (int e=0; e < (nbSets * nbWays); e++) {
       state[e] = otawa::hard::Cache::block_t(-1);
     } 
@@ -233,7 +260,7 @@ public:
      * 4. iterate through the corresponding set
      * 4.1. if the same tag is found, stop iterating
      * 4.2. otherwise continue until the end of the set
-     * 5. iterate through the correspnding set again in reverse
+     * 5. iterate through the corresponding set again in reverse
      *    while shifting the currently stored tags towards the
      *    end of the set (increasing their age)
      * 6. set the first tag of the set (age 0) to the new tag
@@ -271,6 +298,157 @@ public:
     state[toAddSet * nbWays + pos] = toAddTag;
     
     //displayState();
+    //cout << endl;
+  }
+
+  /**
+   * @fn updateFIFO
+   * Updates the current cache state with a new cache block according
+   * to the FIFO policy
+   * 
+   * Cache blocks are identified by the tag of the address of its
+   * first instruction. The user is expected to handle which address
+   * to give themselves.
+   * 
+   * This function will determine in which set to add this block based
+   * on the value of the address and the methods provided by the 
+   * encapsulated Cache item.
+   * 
+   * @param toAdd instruction address to be added to the cache
+   */
+  void updateFIFO(otawa::address_t toAdd){
+    /**
+     * Algorithm details :
+     * 1. retrieve the set to add the instruction to
+     * 2. retrieve the tag that will represent the cache block
+     * 3. initialise the "found" position to 0
+     * 4. iterate through the corresponding set
+     * 4.1. if the same tag is found, stop everything
+     * 4.2. otherwise set the currIndex to the new tag
+     *      and increment it by 1
+    */
+
+    auto toAddSet = cache->set(toAdd);
+    auto toAddTag = cache->block(toAdd);
+
+    // position variable
+    int pos = 0;
+    bool found = false;
+    
+    // search loop : break before incrementing if the same tag is found
+    while (pos < nbWays && !found){
+      if (toAddTag == state[toAddSet * nbWays + pos]) {
+        found = true;
+        break;
+      }
+      pos++;
+    }
+
+    if (!found) {
+      state[toAddSet * nbWays + currIndexFIFO[toAddSet]] = toAddTag;
+      currIndexFIFO[toAddSet] = (currIndexFIFO[toAddSet]+1) % nbWays;
+    }
+
+    //displayState();
+    //cout << endl;
+  }
+
+  /**
+   * @fn updatePLRU
+   * Updates the current cache state with a new cache block according
+   * to the PseudoLRU policy
+   * 
+   * Cache blocks are identified by the tag of the address of its
+   * first instruction. The user is expected to handle which address
+   * to give themselves.
+   * 
+   * This function will determine in which set to add this block based
+   * on the value of the address and the methods provided by the 
+   * encapsulated Cache item.
+   * 
+   * @param toAdd instruction address to be added to the cache
+   */
+  void updatePLRU(otawa::address_t toAdd){
+    /**
+
+    */
+
+    auto toAddSet = cache->set(toAdd);
+    auto toAddTag = cache->block(toAdd);
+
+
+    // position variable
+    int pos = 0;
+    bool found = false;
+    
+    // search loop : break before incrementing if the same tag is found
+    while (pos < nbWays && !found){ 
+      if (toAddTag == state[toAddSet * nbWays + pos]) {
+        found = true;
+        break;
+      }
+      pos++;
+    }
+
+    if (found){
+      int i = 0;
+      int look = 0;
+      int bit = 0;
+      while (i < logNbWays) { // 3 - 0 - 1
+        bit = 1 << (logNbWays-i-1);
+        if ( (pos) & ( 1 << (logNbWays-i-1)) ) { // clear it
+          accessBitsPLRU[toAddSet] = accessBitsPLRU[toAddSet] & ~(1 << look);
+          look += nbWays / (1 << (i+1)) ;
+        } else { // set it
+          accessBitsPLRU[toAddSet] = accessBitsPLRU[toAddSet] | (1 << look);
+          look += 1;
+        }
+        i++;
+      }
+    } else {
+      int look = 0;
+      int access = 0;
+
+      int i = 0;
+      while(i < logNbWays){
+        access <<= 1;
+        if (accessBitsPLRU[toAddSet] & (1 << look)) {
+          access++;
+        }
+
+        accessBitsPLRU[toAddSet] = accessBitsPLRU[toAddSet] ^ (1 << look);
+        if (accessBitsPLRU[toAddSet] & (1 << look)){
+          look += 1;
+        } else {
+          look += nbWays / (1 << (i+1)) ;
+        }
+        i++;
+      }
+    
+      // set new tag at access
+      state[toAddSet * nbWays + access] = toAddTag;
+    }
+
+    //displayState();
+    //cout << endl;
+  }
+
+  void update(otawa::address_t toAdd){
+    switch (cache->replacementPolicy())
+    {
+    case otawa::hard::Cache::LRU:
+      updateLRU(toAdd);
+      break;
+    case otawa::hard::Cache::FIFO:
+      updateFIFO(toAdd);
+      break;
+    case otawa::hard::Cache::PLRU:
+      updatePLRU(toAdd);
+      break;
+    
+    default:
+      break;
+    }
   }
 
   /**
@@ -328,7 +506,10 @@ public:
 
 private:
   int nbWays;
+  int logNbWays;
   int nbSets;
+  int *currIndexFIFO;
+  elm::t::uint64 *accessBitsPLRU;
   AllocArray<otawa::hard::Cache::block_t> state;
   const otawa::hard::Cache* cache;
 };
@@ -382,7 +563,7 @@ void statetest(CFG *g, CacheState *mycache, string indent = "") {
           State* newState = mycache->getSubState(inst->address());
           SAVED(v)->add(newState, currSet);
 
-          mycache->updateLRU(inst->address());
+          mycache->update(inst->address());
 
         }
       }
@@ -402,8 +583,10 @@ void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysC
       for (int i = 0; i < waysCount; i++){
         mins[i] = min(mins[i],listSizes[i]);
         maxs[i] = max(maxs[i],listSizes[i]);
-        moys[i] += listSizes[i];
-        (*bbCount)++;
+        if (listSizes[i] != 0){
+          moys[i] += listSizes[i];
+          bbCount[i]++;
+        }
       }
     }
   }
@@ -414,17 +597,23 @@ void makeStats(CFG *g, CacheState *mycache) {
   int mins[waysCount];
   int maxs[waysCount];
   float moys[waysCount];
+  int bbCount[waysCount];
   for (int i = 0; i < waysCount; i++){
     mins[i] = type_info<int>::max;
     maxs[i] = 0;
     moys[i] = 0;
+    bbCount[i] = 0;
   }
-  int bbCount = 0;
 
 
-  getStats(g, mins, maxs, moys, &bbCount, waysCount);
+  getStats(g, mins, maxs, moys, bbCount, waysCount);
 
-  cout << "bbcount : " << bbCount << endl;
+  
+  cout << "bbcount : ";
+  for (int i = 0; i < waysCount; i++){
+    cout << bbCount[i] << " ";
+  }
+  cout << endl;
 
   cout << "mins : ";
   for (int i = 0; i < waysCount; i++){
@@ -440,7 +629,7 @@ void makeStats(CFG *g, CacheState *mycache) {
 
   cout << "moys : ";
   for (int i = 0; i < waysCount; i++){
-    moys[i] /= bbCount;
+    moys[i] /= bbCount[i];
     cout << moys[i] << " ";
   }
   cout << endl;
@@ -475,6 +664,10 @@ protected:
     initState(maincfg, &mycache);
     statetest(maincfg, &mycache);
     //printStates(maincfg, &mycache);
+
+    cout << "Policy : " << icache->replacementPolicy() << endl;
+    mycache.displayState();
+    cout << endl;
 
     makeStats(maincfg, &mycache);
     
