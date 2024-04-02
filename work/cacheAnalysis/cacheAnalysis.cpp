@@ -16,13 +16,6 @@ using namespace otawa;
 
 
 /**
- * @fn
- * 
- * @param
- * @return  
- */
-
-/**
  * @class State
  * A simplistic representation of the state of a cache set
  * 
@@ -124,6 +117,15 @@ class SaveState {
   public:
   SaveState(): saved(nullptr), size(0) {}
   
+
+  /**
+   * @fn setCache
+   * Initiliases the private attributes required by the class
+   * 
+   * @param icache const otawa::hard::Cache* 
+   * or
+   * @param setCount int
+   */
   void setCache(const otawa::hard::Cache* icache){
     size = icache->setCount();
     saved = new List<State *> [size];
@@ -141,6 +143,14 @@ class SaveState {
     }
   }
 
+  /**
+   * @fn add 
+   * Adds a new cache State in the saved List 
+   * to the given set 
+   * 
+   * @param newState the new State*
+   * @param set the set to add State to (0 <= set < size)
+   */
   void add(State *newState, int set) {
     ASSERTP(set >= 0 && set < size, "In SaveState.add() : argument 'set', index out of bound.");
     if (!(saved[set].contains(newState))){
@@ -149,6 +159,11 @@ class SaveState {
     }
   }
 
+  /**
+   * @fn getListSizes
+   * Mostly used for stats purposes
+   * @return int*
+   */
   int* getListSizes(){
     return listSizes;
   }
@@ -161,6 +176,7 @@ class SaveState {
   List<State *> *saved;
 };
 
+// Redefinition of the << operator for the SaveState class
 elm::io::Output &operator<<(elm::io::Output &output, const SaveState &saveState) {
   output << "[ ";
   for (int i = 0; i < saveState.size ; i++){
@@ -193,35 +209,76 @@ public:
     } 
   }
 
+  /**
+   * @fn updateLRU
+   * Updates the current cache state with a new cache block according
+   * to the LRU policy
+   * 
+   * Cache blocks are identified by the tag of the address of its
+   * first instruction. The user is expected to handle which address
+   * to give themselves.
+   * 
+   * This function will determine in which set to add this block based
+   * on the value of the address and the methods provided by the 
+   * encapsulated Cache item.
+   * 
+   * @param toAdd instruction address to be added to the cache
+   */
   void updateLRU(otawa::address_t toAdd){
+    /**
+     * Algorithm details :
+     * 1. retrieve the set to add the instruction to
+     * 2. retrieve the tag that will represent the cache block
+     * 3. initialise the "found" position to 0
+     * 4. iterate through the corresponding set
+     * 4.1. if the same tag is found, stop iterating
+     * 4.2. otherwise continue until the end of the set
+     * 5. iterate through the correspnding set again in reverse
+     *    while shifting the currently stored tags towards the
+     *    end of the set (increasing their age)
+     * 6. set the first tag of the set (age 0) to the new tag
+     * 
+     * Notes : 
+     * - whether the new tag is already in the cache or not is
+     *   essentially treated in the same way, and the updade is
+     *   already in O(n)
+     * - checking the last entry of the set in unnecessary as it
+     *   will either get evicted or "shifted" back to age 0. Instead
+     *   of manually shifting it, setting the new tag to age 0 
+     *   effectively achieves the same result.
+    */
+
     auto toAddSet = cache->set(toAdd);
     auto toAddTag = cache->block(toAdd);
 
-    // démarrer à zéro
-    // vérifier l'existence progressive
-    // si trouvé, alors faire des xch progressifs
+    // position variable
     int pos = 0;
     
-    // there is no need to check the last entry of the state, it either gets deleted, or shifted to age 0
-    // if the tag is found in the middle, break the search loop
+    // search loop : break before incrementing if the same tag is found
     while (pos < nbWays - 1){ 
       if (toAddTag == state[toAddSet * nbWays + pos]) break;
       pos++;
     }
     
-    // overwrite to simulate elements switch
+    // reverse loop : overwrite the current tag (pos) with the 
+    // immediately younger tag (pos-1)
     while (pos > 0){
       state[toAddSet * nbWays + pos] = state[toAddSet * nbWays + pos-1];
       pos--;
     }
 
-    // new tag has age 0
+    // set age 0 with the new tag
     state[toAddSet * nbWays + pos] = toAddTag;
     
     //displayState();
   }
 
+  /**
+   * @fn displayState
+   * prints to cout the current state of the cache
+  */
   void displayState(){
+    //TODO use "cout" as an argument (output something)
     for (int i=0; i < nbSets ; i++) {
       cout << i << " : ";
       for (int j=0; j < nbWays; j++){
@@ -231,6 +288,7 @@ public:
     }
   }
 
+  // Various Getters
   inline const otawa::hard::Cache* getCache(){
     return cache;
   }
@@ -247,6 +305,16 @@ public:
     return cache->set(toAdd);
   }
 
+  /**
+   * @fn getSubState
+   * Instantiates a new State object, initialises it and
+   * returns it
+   * 
+   * @param toGet otawa::address_t 
+   * @return newState a newly instantiated State object 
+   * that represents the state of the cache set of the
+   * given instruction's address.
+  */
   State* getSubState(otawa::address_t toGet){
     auto toGetSet = cache->set(toGet);
     State* newState = new State(nbWays);
