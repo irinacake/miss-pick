@@ -522,6 +522,9 @@ p::id<SaveState*> SAVED("SAVED");
 
 
 void printStates(CFG *g, CacheState *mycache, string indent = "") {
+  if (g == nullptr) {
+    return;
+  }
   for(auto v: *g){
 		if(v->isSynth()) {
 			printStates(v->toSynth()->callee(), mycache, indent + "\t");
@@ -532,6 +535,9 @@ void printStates(CFG *g, CacheState *mycache, string indent = "") {
 }
 
 void initState(CFG *g, CacheState *mycache, string indent = "") {
+  if (g == nullptr) {
+    return;
+  }
   for(auto v: *g){
 		if(v->isSynth()) {
 			initState(v->toSynth()->callee(), mycache, indent + "\t");
@@ -544,7 +550,9 @@ void initState(CFG *g, CacheState *mycache, string indent = "") {
 }
 
 void statetest(CFG *g, CacheState *mycache, string indent = "") {
-
+  if (g == nullptr) {
+    return;
+  }
   int currTag;
   int currSet;
 	for(auto v: *g){
@@ -574,6 +582,9 @@ void statetest(CFG *g, CacheState *mycache, string indent = "") {
 
 
 void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysCount) {
+  if (g == nullptr) {
+    return;
+  }
   for(auto v: *g){
 		if(v->isSynth()) {
 			getStats(v->toSynth()->callee(), mins, maxs, moys, bbCount, waysCount);
@@ -660,6 +671,8 @@ protected:
     auto confs = hard::CACHE_CONFIGURATION_FEATURE.get(workspace());
     auto icache = confs->instCache();
     CacheState mycache(icache);
+
+
 
     initState(maincfg, &mycache);
     statetest(maincfg, &mycache);

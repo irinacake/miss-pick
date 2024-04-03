@@ -16,3 +16,7 @@
 - stat: nombre d'états min/max/moy par ensemble selon les BB
 - stat: nombre d'états min/max/moy par ensemble global
 - ajouter des politiques
+
+- supprimer les ensembles non utilisés dans les stats
+- refractor update classes, heritage
+- mettre des asserts pour essayer de détecter des erreurs
