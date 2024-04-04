@@ -11,6 +11,11 @@
 #include <elm/sys/FileItem.h>
 #include <elm/util/BitVector.h>
 
+#include <elm/sys/StopWatch.h>
+
+#include <elm/options.h>
+
+
 using namespace elm;
 using namespace otawa;
 
@@ -458,9 +463,13 @@ public:
   void displayState(){
     //TODO use "cout" as an argument (output something)
     for (int i=0; i < nbSets ; i++) {
-      cout << i << " : ";
+      cout << i << "\t:\t";
       for (int j=0; j < nbWays; j++){
-        cout << state[i * nbWays + j] << "  ";
+        if ( state[i * nbWays + j] == otawa::hard::Cache::block_t(-1)) {
+          cout << "null" << "  ";
+        } else {
+          cout << state[i * nbWays + j] << "  ";
+        }
       }
       cout << endl;
     }
@@ -520,18 +529,105 @@ private:
 p::id<SaveState*> SAVED("SAVED");
 
 
+p::id<bool> MARKPRINT("MARKPRINT", false);
+p::id<bool> MARK("MARK", false);
+//p::id<bool> MARK("MARK", false);
 
-void printStates(CFG *g, CacheState *mycache, string indent = "") {
+void printStates(CFG *g, CacheState *mycache) {
+  Vector<Block *> fnctodo;
+  Vector<Block *> todo;
+  fnctodo.add(g->entry());
+
+  while (!fnctodo.isEmpty()){
+    todo.add(fnctodo.pop());
+    
+    while (!todo.isEmpty()){
+      auto curBlock = todo.pop();
+
+      if (!MARKPRINT(curBlock)){
+        if(curBlock->isSynth()) {
+          if ( curBlock->toSynth()->callee() != nullptr )
+            fnctodo.add(curBlock->toSynth()->callee()->entry());
+        } else if (curBlock->isBasic()) {
+          cout << **SAVED(curBlock) << endl;
+        }
+        for (auto e: curBlock->outEdges()){
+          auto p = e->sink();
+          todo.add(p);
+        }
+
+        MARKPRINT(curBlock) = true;
+      }
+    }
+  }
+}
+
+
+void initStateWL(CFG *g, CacheState *mycache) {
+  cout << "init state WL" << endl;
+  Vector<Block *> fnctodo;
+  // for each inst within a function
+  Vector<Block *> todo;
+
+  fnctodo.add(g->entry());
+  cout << g->entry() << endl;
+
+  int i;
+  int i2 = 0;
+  while (!fnctodo.isEmpty()){
+    // transfer from fnctodo to todo
+    todo.add(fnctodo.pop());
+    
+    // basic var to give a different name
+    i2++;
+
+    // init the function in .dot
+    cout << "i2 " << i2 << endl;
+
+    //debug
+    i = 0;
+    
+    while (!todo.isEmpty()){
+      // pop the next inst in todo
+      auto curBlock = todo.pop();
+
+      // only work on the inst if not already marked
+      if (!MARK(curBlock)){
+        // work to do varies based on inst type
+        if(curBlock->isSynth()) {
+          if ( curBlock->toSynth()->callee() != nullptr )
+            fnctodo.add(curBlock->toSynth()->callee()->entry());
+          //initState(v->toSynth()->callee(), mycache);
+        } else if (curBlock->isBasic()) {
+          SaveState* newSaveState = new SaveState;
+          newSaveState->setCache(mycache->getCache());
+          SAVED(curBlock) = newSaveState;
+        }
+        for (auto e: curBlock->outEdges()){
+          auto p = e->sink();
+          todo.add(p);
+        }
+
+        // mark current as done
+        MARK(curBlock) = true;
+      }
+    }
+  }
+
+  /*
   if (g == nullptr) {
     return;
   }
   for(auto v: *g){
 		if(v->isSynth()) {
-			printStates(v->toSynth()->callee(), mycache, indent + "\t");
+			initState(v->toSynth()->callee(), mycache);
     } else if (v->isBasic()) {
-      cout << indent << **SAVED(v) << endl;
+      SaveState* newSaveState = new SaveState;
+      newSaveState->setCache(mycache->getCache());
+      SAVED(v) = newSaveState;
     }
   }
+  */
 }
 
 void initState(CFG *g, CacheState *mycache, string indent = "") {
@@ -548,6 +644,85 @@ void initState(CFG *g, CacheState *mycache, string indent = "") {
     }
   }
 }
+
+
+/*
+
+cout << "init state WL" << endl;
+  Vector<Block *> fnctodo;
+  // for each inst within a function
+  Vector<Block *> todo;
+
+  fnctodo.add(g->entry());
+  cout << g->entry() << endl;
+
+  int i;
+  int i2 = 0;
+  while (!fnctodo.isEmpty()){
+    // transfer from fnctodo to todo
+    todo.add(fnctodo.pop());
+    
+    // basic var to give a different name
+    i2++;
+
+    // init the function in .dot
+    cout << "i2 " << i2 << endl;
+
+    //debug
+    i = 0;
+    
+    while (!todo.isEmpty()){
+      // pop the next inst in todo
+      auto curBlock = todo.pop();
+
+      // only work on the inst if not already marked
+      if (!MARK(curBlock)){
+        // work to do varies based on inst type
+        if ( curBlock->isReturn() ){
+          // add nothing to todo
+          // add no path
+
+          // debug
+          cout<<"[ret:"<<i<<"]("<<curBlock->address()<<") "<<curBlock<<io::endl;i++;
+        } else if (curBlock->isBranch()) {
+          // add branch target to todo
+          todo.add(curBlock->target());
+          
+          // if and only if the branch is conditionnal
+          if (curBlock->isCond()) {
+            // add nextinst to todo
+            todo.add(curBlock->nextInst());
+          }
+          // else, the nextInst will never be taken
+
+          // debug
+          cout<<"[brch:"<<i<<"]("<<curBlock->address()<<") "<<curBlock<<io::endl;i++;
+        } else if (curBlock->isCall()) {
+          // add both next and call to todo
+          fnctodo.add(curBlock->target());
+          todo.add(curBlock->nextInst());
+
+          // debug
+          cout<<"[call:"<<i<<"]("<<curBlock->address()<<") "<<curBlock<<io::endl;i++;
+        }
+        
+        else {
+          // default, add next to todo
+          todo.add(curBlock->nextInst());
+
+          // debug
+          cout<<"[:"<<i<<"]("<<curBlock->address()<<") "<<curBlock<<io::endl;i++;
+        }
+
+        // mark current as done
+        MARK(curBlock) = true;
+      }
+    }
+  }
+
+*/
+
+
 
 void statetest(CFG *g, CacheState *mycache, string indent = "") {
   if (g == nullptr) {
@@ -644,7 +819,6 @@ void makeStats(CFG *g, CacheState *mycache) {
     cout << moys[i] << " ";
   }
   cout << endl;
-
 }
 
 
@@ -653,13 +827,20 @@ void makeStats(CFG *g, CacheState *mycache) {
 
 class CacheAnalysis: public Application {
 public:
-  CacheAnalysis(void): Application("CacheAnalysis", Version(1, 0, 0)) { }
+  CacheAnalysis(void): Application("CacheAnalysis", Version(1, 0, 0)),
+    //opt(option::SwitchOption::Make(*this).cmd("-o").cmd("--com").help("option 1")),
+    cacheXml(option::ValueOption<string>::Make(*this).cmd("-c").cmd("--cache").help("Cache configuration xml file").usage(option::arg_required))
+  
+   { }
 
 protected:
   void work(const string &entry, PropList &props) override {
     
+    sys::StopWatch mySW;
+    mySW.start();
+
     //otawa::VERBOSE(props) = true;
-    otawa::CACHE_CONFIG_PATH(props) = "mycache.xml";
+    otawa::CACHE_CONFIG_PATH(props) = *cacheXml;
 
     require(DECODED_TEXT);
     require(COLLECTED_CFG_FEATURE);
@@ -674,19 +855,25 @@ protected:
 
 
 
-    initState(maincfg, &mycache);
-    statetest(maincfg, &mycache);
-    //printStates(maincfg, &mycache);
+    initStateWL(maincfg, &mycache);
+    //statetest(maincfg, &mycache);
+    printStates(maincfg, &mycache);
 
     cout << "Policy : " << icache->replacementPolicy() << endl;
     mycache.displayState();
     cout << endl;
 
-    makeStats(maincfg, &mycache);
+    //makeStats(maincfg, &mycache);
+    
+    mySW.stop();
+
+    cout << "time : " << mySW.delay() << endl;
     
   }
 
 private:
+  //option::SwitchOption opt;
+  option::ValueOption<string> cacheXml;
 };
 
 
