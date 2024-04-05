@@ -8,6 +8,7 @@
 #include <otawa/hard/CacheConfiguration.h>
 
 #include <elm/assert.h>
+#include <elm/array.h>
 #include <elm/sys/FileItem.h>
 #include <elm/util/BitVector.h>
 
@@ -174,12 +175,14 @@ class SaveState {
    * @param newState the new State*
    * @param set the set to add State to (0 <= set < size)
    */
-  void add(State *newState, int set) {
+  bool add(State *newState, int set) {
     ASSERTP(set >= 0 && set < size, "In SaveState.add() : argument 'set', index out of bound.");
     if (!(saved[set].contains(newState))){
       listSizes[set]++;
       saved[set].add(newState);
-    }
+      return true;
+    } 
+    return false;
   }
 
   /**
@@ -229,17 +232,26 @@ public:
     ASSERTP(logNbWays < 7, "CacheState: cache way limit is 2^6");
     state.allocate(nbSets * nbWays);
 
-    currIndexFIFO = new int[nbSets];
-    accessBitsPLRU = new elm::t::uint64[nbSets];
+    currIndexFIFO.allocate(nbSets);
+    accessBitsPLRU.allocate(nbSets);
     for (int e=0; e < nbSets; e++) {
       currIndexFIFO[e] = 0;
       accessBitsPLRU[e] = 0;
     } 
-
     for (int e=0; e < (nbSets * nbWays); e++) {
       state[e] = otawa::hard::Cache::block_t(-1);
     } 
   }
+
+  CacheState(const CacheState& oldCacheState) :
+    cache(oldCacheState.cache),
+    nbSets(oldCacheState.nbSets),
+    nbWays(oldCacheState.nbWays),
+    logNbWays(oldCacheState.logNbWays),
+
+    state(oldCacheState.state),
+    currIndexFIFO(oldCacheState.currIndexFIFO),
+    accessBitsPLRU(oldCacheState.accessBitsPLRU) {}
 
   /**
    * @fn updateLRU
@@ -475,6 +487,12 @@ public:
     }
   }
 
+
+  virtual CacheState* copy(){
+    return new CacheState(*this);
+  }
+
+
   // Various Getters
   inline const otawa::hard::Cache* getCache(){
     return cache;
@@ -517,8 +535,8 @@ private:
   int nbWays;
   int logNbWays;
   int nbSets;
-  int *currIndexFIFO;
-  elm::t::uint64 *accessBitsPLRU;
+  AllocArray<int> currIndexFIFO;
+  AllocArray<elm::t::uint64> accessBitsPLRU;
   AllocArray<otawa::hard::Cache::block_t> state;
   const otawa::hard::Cache* cache;
 };
@@ -530,199 +548,113 @@ p::id<SaveState*> SAVED("SAVED");
 
 
 p::id<bool> MARKPRINT("MARKPRINT", false);
-p::id<bool> MARK("MARK", false);
-//p::id<bool> MARK("MARK", false);
 
-void printStates(CFG *g, CacheState *mycache) {
-  Vector<Block *> fnctodo;
-  Vector<Block *> todo;
-  fnctodo.add(g->entry());
-
-  while (!fnctodo.isEmpty()){
-    todo.add(fnctodo.pop());
-    
-    while (!todo.isEmpty()){
-      auto curBlock = todo.pop();
-
-      if (!MARKPRINT(curBlock)){
-        if(curBlock->isSynth()) {
-          if ( curBlock->toSynth()->callee() != nullptr )
-            fnctodo.add(curBlock->toSynth()->callee()->entry());
-        } else if (curBlock->isBasic()) {
-          cout << **SAVED(curBlock) << endl;
-        }
-        for (auto e: curBlock->outEdges()){
-          auto p = e->sink();
-          todo.add(p);
-        }
-
-        MARKPRINT(curBlock) = true;
-      }
-    }
-  }
-}
-
-
-void initStateWL(CFG *g, CacheState *mycache) {
-  cout << "init state WL" << endl;
-  Vector<Block *> fnctodo;
-  // for each inst within a function
-  Vector<Block *> todo;
-
-  fnctodo.add(g->entry());
-  cout << g->entry() << endl;
-
-  int i;
-  int i2 = 0;
-  while (!fnctodo.isEmpty()){
-    // transfer from fnctodo to todo
-    todo.add(fnctodo.pop());
-    
-    // basic var to give a different name
-    i2++;
-
-    // init the function in .dot
-    cout << "i2 " << i2 << endl;
-
-    //debug
-    i = 0;
-    
-    while (!todo.isEmpty()){
-      // pop the next inst in todo
-      auto curBlock = todo.pop();
-
-      // only work on the inst if not already marked
-      if (!MARK(curBlock)){
-        // work to do varies based on inst type
-        if(curBlock->isSynth()) {
-          if ( curBlock->toSynth()->callee() != nullptr )
-            fnctodo.add(curBlock->toSynth()->callee()->entry());
-          //initState(v->toSynth()->callee(), mycache);
-        } else if (curBlock->isBasic()) {
-          SaveState* newSaveState = new SaveState;
-          newSaveState->setCache(mycache->getCache());
-          SAVED(curBlock) = newSaveState;
-        }
-        for (auto e: curBlock->outEdges()){
-          auto p = e->sink();
-          todo.add(p);
-        }
-
-        // mark current as done
-        MARK(curBlock) = true;
-      }
-    }
-  }
-
-  /*
+void printStates(CFG *g, CacheState *mycache, string indent = "") {
   if (g == nullptr) {
     return;
   }
   for(auto v: *g){
-		if(v->isSynth()) {
-			initState(v->toSynth()->callee(), mycache);
-    } else if (v->isBasic()) {
-      SaveState* newSaveState = new SaveState;
-      newSaveState->setCache(mycache->getCache());
-      SAVED(v) = newSaveState;
+    if (!MARKPRINT(v)){
+      MARKPRINT(v) = true;
+      if(v->isSynth()) {
+        printStates(v->toSynth()->callee(), mycache, indent + "\t");
+      } else if (v->isBasic()) {
+        cout << indent << **SAVED(v) << endl;
+      }
     }
   }
-  */
 }
+
+
+
+p::id<bool> MARKINIT("MARKINIT", false);
 
 void initState(CFG *g, CacheState *mycache, string indent = "") {
   if (g == nullptr) {
     return;
   }
   for(auto v: *g){
-		if(v->isSynth()) {
-			initState(v->toSynth()->callee(), mycache, indent + "\t");
-    } else if (v->isBasic()) {
-      SaveState* newSaveState = new SaveState;
-      newSaveState->setCache(mycache->getCache());
-      SAVED(v) = newSaveState;
+    if (!MARKINIT(v)){
+      MARKINIT(v) = true;
+      if(v->isSynth()) {
+        initState(v->toSynth()->callee(), mycache, indent + "\t");
+      } else if (v->isBasic()) {
+        SaveState* newSaveState = new SaveState;
+        newSaveState->setCache(mycache->getCache());
+        SAVED(v) = newSaveState;
+      }
     }
   }
 }
 
 
-/*
+void statetestWL(CFG *g, CacheState *mycache) {
 
-cout << "init state WL" << endl;
-  Vector<Block *> fnctodo;
-  // for each inst within a function
-  Vector<Block *> todo;
+  int currTag;
+  int currSet;
+  bool updated;
 
-  fnctodo.add(g->entry());
-  cout << g->entry() << endl;
 
-  int i;
-  int i2 = 0;
-  while (!fnctodo.isEmpty()){
-    // transfer from fnctodo to todo
-    todo.add(fnctodo.pop());
-    
-    // basic var to give a different name
-    i2++;
+  Vector<Pair<Block *,CacheState *>> todo;
 
-    // init the function in .dot
-    cout << "i2 " << i2 << endl;
+  todo.add(pair(g->entry(),mycache));
 
-    //debug
-    i = 0;
-    
-    while (!todo.isEmpty()){
-      // pop the next inst in todo
-      auto curBlock = todo.pop();
+  
+  while (!todo.isEmpty()){
+    auto curPair = todo.pop();
+    auto curBlock = curPair.fst;
+    auto curState = curPair.snd;
 
-      // only work on the inst if not already marked
-      if (!MARK(curBlock)){
-        // work to do varies based on inst type
-        if ( curBlock->isReturn() ){
-          // add nothing to todo
-          // add no path
 
-          // debug
-          cout<<"[ret:"<<i<<"]("<<curBlock->address()<<") "<<curBlock<<io::endl;i++;
-        } else if (curBlock->isBranch()) {
-          // add branch target to todo
-          todo.add(curBlock->target());
-          
-          // if and only if the branch is conditionnal
-          if (curBlock->isCond()) {
-            // add nextinst to todo
-            todo.add(curBlock->nextInst());
-          }
-          // else, the nextInst will never be taken
-
-          // debug
-          cout<<"[brch:"<<i<<"]("<<curBlock->address()<<") "<<curBlock<<io::endl;i++;
-        } else if (curBlock->isCall()) {
-          // add both next and call to todo
-          fnctodo.add(curBlock->target());
-          todo.add(curBlock->nextInst());
-
-          // debug
-          cout<<"[call:"<<i<<"]("<<curBlock->address()<<") "<<curBlock<<io::endl;i++;
+    if (curBlock->isEntry()) {
+      for (auto e: curBlock->outEdges()){
+          auto sink = e->sink();
+          // if s \in S_sink
+          todo.add(pair(sink,curState->copy()));
         }
-        
-        else {
-          // default, add next to todo
-          todo.add(curBlock->nextInst());
-
-          // debug
-          cout<<"[:"<<i<<"]("<<curBlock->address()<<") "<<curBlock<<io::endl;i++;
+    } else if(curBlock->isExit()) {
+      for (auto caller: curBlock->cfg()->callers()){
+        for (auto e: caller->outEdges()){
+          auto sink = e->sink();
+          // if s \in S_sink
+          todo.add(pair(sink,curState->copy()));
         }
+      }
 
-        // mark current as done
-        MARK(curBlock) = true;
+    } else if(curBlock->isSynth()) {
+      if ( curBlock->toSynth()->callee() != nullptr )
+        todo.add(pair(curBlock->toSynth()->callee()->entry(),curState));
+
+    } else if (curBlock->isBasic()) {
+
+      updated = false;
+      currTag = -1;
+      currSet = -1;
+
+      for (auto inst : *curBlock->toBasic()){
+        if (currTag != mycache->getTag(inst->address())
+            || currSet != mycache->getSet(inst->address()) ){
+
+          currTag = mycache->getTag(inst->address());
+          currSet = mycache->getSet(inst->address());
+
+          State* newState = mycache->getSubState(inst->address());
+          updated |= SAVED(curBlock)->add(newState, currSet);
+
+          mycache->update(inst->address());
+
+        }
+      }
+
+      if (updated){
+        for (auto e: curBlock->outEdges()){
+          auto sink = e->sink();
+          todo.add(pair(sink,curState->copy()));
+        }
       }
     }
   }
-
-*/
-
-
+}
 
 void statetest(CFG *g, CacheState *mycache, string indent = "") {
   if (g == nullptr) {
@@ -756,27 +688,34 @@ void statetest(CFG *g, CacheState *mycache, string indent = "") {
 
 
 
+
+p::id<bool> MARKSTATS("MARKSTATS", false);
+
 void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysCount) {
   if (g == nullptr) {
     return;
   }
   for(auto v: *g){
-		if(v->isSynth()) {
-			getStats(v->toSynth()->callee(), mins, maxs, moys, bbCount, waysCount);
-    } else if (v->isBasic()) {
-      SaveState* sState = *SAVED(v);
-      int* listSizes = sState->getListSizes();
-      for (int i = 0; i < waysCount; i++){
-        mins[i] = min(mins[i],listSizes[i]);
-        maxs[i] = max(maxs[i],listSizes[i]);
-        if (listSizes[i] != 0){
-          moys[i] += listSizes[i];
-          bbCount[i]++;
+    if (!MARKSTATS(v)) {
+      MARKSTATS(v) = true;
+      if(v->isSynth()) {
+        getStats(v->toSynth()->callee(), mins, maxs, moys, bbCount, waysCount);
+      } else if (v->isBasic()) {
+        SaveState* sState = *SAVED(v);
+        int* listSizes = sState->getListSizes();
+        for (int i = 0; i < waysCount; i++){
+          mins[i] = min(mins[i],listSizes[i]);
+          maxs[i] = max(maxs[i],listSizes[i]);
+          if (listSizes[i] != 0){
+            moys[i] += listSizes[i];
+            bbCount[i]++;
+          }
         }
       }
     }
   }
 }
+
 
 void makeStats(CFG *g, CacheState *mycache) {
   int waysCount = mycache->getCache()->setCount();
@@ -855,15 +794,15 @@ protected:
 
 
 
-    initStateWL(maincfg, &mycache);
-    //statetest(maincfg, &mycache);
-    printStates(maincfg, &mycache);
+    initState(maincfg, &mycache);
+    statetestWL(maincfg, &mycache);
+    //printStates(maincfg, &mycache);
 
     cout << "Policy : " << icache->replacementPolicy() << endl;
     mycache.displayState();
     cout << endl;
 
-    //makeStats(maincfg, &mycache);
+    makeStats(maincfg, &mycache);
     
     mySW.stop();
 
