@@ -39,6 +39,7 @@ void printbits(elm::t::uint64 n){
 
 
 
+
 /**
  * @class State
  * A simplistic representation of the state of a cache set
@@ -120,6 +121,7 @@ namespace elm {
 
 
 
+
 /**
  * @class SaveState
  * A SaveState is a data structure that store multiple cache states
@@ -175,11 +177,16 @@ class SaveState {
    * @param newState the new State*
    * @param set the set to add State to (0 <= set < size)
    */
-  bool add(State *newState, int set) {
+  void add(State *newState, int set) {
     ASSERTP(set >= 0 && set < size, "In SaveState.add() : argument 'set', index out of bound.");
     if (!(saved[set].contains(newState))){
       listSizes[set]++;
       saved[set].add(newState);
+    }
+  }
+
+  bool contains(State *newState, int set){
+    if ((saved[set].contains(newState))){
       return true;
     } 
     return false;
@@ -215,6 +222,10 @@ elm::io::Output &operator<<(elm::io::Output &output, const SaveState &saveState)
   output << "]";
   return output;
 }
+
+
+
+p::id<SaveState*> SAVED("SAVED");
 
 
 
@@ -492,6 +503,28 @@ public:
     return new CacheState(*this);
   }
 
+  bool existsIn(otawa::Block* blockCheck){
+    bool contains = false;
+    int currTag = -1;
+    int currSet = -1;
+
+    if (blockCheck->isBasic()){
+      for (auto inst : *blockCheck->toBasic()){
+        if (currTag != getTag(inst->address())
+            || currSet != getSet(inst->address()) ){
+
+          currTag = getTag(inst->address());
+          currSet = getSet(inst->address());
+
+          if ((SAVED(blockCheck)->contains(getSubState(inst->address()),currSet))){
+            return true;
+          } 
+        }
+      }
+    }
+    return false;
+  }
+
 
   // Various Getters
   inline const otawa::hard::Cache* getCache(){
@@ -544,7 +577,6 @@ private:
 
 
 
-p::id<SaveState*> SAVED("SAVED");
 
 
 p::id<bool> MARKPRINT("MARKPRINT", false);
@@ -603,53 +635,75 @@ void statetestWL(CFG *g, CacheState *mycache) {
   while (!todo.isEmpty()){
     auto curPair = todo.pop();
     auto curBlock = curPair.fst;
-    auto curState = curPair.snd;
+    auto curCacheState = curPair.snd;
+
+    //curCacheState->displayState();
+    //cout << "copy now :" << endl;
+    //curCacheState->copy()->displayState();
+    //cout << endl << endl;
 
 
     if (curBlock->isEntry()) {
       for (auto e: curBlock->outEdges()){
           auto sink = e->sink();
           // if s \in S_sink
-          todo.add(pair(sink,curState->copy()));
+          if(!curCacheState->existsIn(sink)){
+            cout << "from entry, adding : " << sink << endl;
+            todo.add(pair(sink,curCacheState->copy()));
+          } else {
+            cout << "from entry, not    : " << sink << endl;
+          }
         }
     } else if(curBlock->isExit()) {
+      
       for (auto caller: curBlock->cfg()->callers()){
+        cout << "caller : " << caller << endl;
         for (auto e: caller->outEdges()){
           auto sink = e->sink();
+          cout << "---- sink : " << sink << endl;
           // if s \in S_sink
-          todo.add(pair(sink,curState->copy()));
+          if(!curCacheState->existsIn(sink)){
+            cout << "---- adding : " << sink << endl;
+            todo.add(pair(sink,curCacheState->copy()));
+          }
         }
       }
 
     } else if(curBlock->isSynth()) {
-      if ( curBlock->toSynth()->callee() != nullptr )
-        todo.add(pair(curBlock->toSynth()->callee()->entry(),curState));
+      if ( curBlock->toSynth()->callee() != nullptr ){
+        cout << "from synth, adding : " << curBlock->toSynth()->callee()->entry() << endl;
+        todo.add(pair(curBlock->toSynth()->callee()->entry(),curCacheState));
+      } else {
+        cout << "from synth, not    : unknown synth block" << endl;
+      }
 
     } else if (curBlock->isBasic()) {
 
-      updated = false;
       currTag = -1;
       currSet = -1;
 
       for (auto inst : *curBlock->toBasic()){
-        if (currTag != mycache->getTag(inst->address())
-            || currSet != mycache->getSet(inst->address()) ){
+        if (currTag != curCacheState->getTag(inst->address())
+            || currSet != curCacheState->getSet(inst->address()) ){
 
-          currTag = mycache->getTag(inst->address());
-          currSet = mycache->getSet(inst->address());
+          currTag = curCacheState->getTag(inst->address());
+          currSet = curCacheState->getSet(inst->address());
 
-          State* newState = mycache->getSubState(inst->address());
-          updated |= SAVED(curBlock)->add(newState, currSet);
+          State* newState = curCacheState->getSubState(inst->address());
+          SAVED(curBlock)->add(newState, currSet);
 
-          mycache->update(inst->address());
+          curCacheState->update(inst->address());
 
         }
       }
 
-      if (updated){
-        for (auto e: curBlock->outEdges()){
-          auto sink = e->sink();
-          todo.add(pair(sink,curState->copy()));
+      for (auto e: curBlock->outEdges()){
+        auto sink = e->sink();
+        if(!curCacheState->existsIn(sink)){
+          cout << "from basic, adding : " << sink << endl;
+          todo.add(pair(sink,curCacheState->copy()));
+        } else {
+          cout << "from basic, not    : " << sink << endl;
         }
       }
     }
@@ -793,13 +847,17 @@ protected:
     CacheState mycache(icache);
 
 
+    cout << "init" << endl;
 
     initState(maincfg, &mycache);
+
+    cout << "init done\n --------------- \nwork" << endl;
+
     statetestWL(maincfg, &mycache);
     //printStates(maincfg, &mycache);
 
     cout << "Policy : " << icache->replacementPolicy() << endl;
-    mycache.displayState();
+    //mycache.displayState();
     cout << endl;
 
     makeStats(maincfg, &mycache);
