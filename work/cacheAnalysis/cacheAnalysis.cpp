@@ -622,9 +622,9 @@ void initState(CFG *g, CacheState *mycache, string indent = "") {
 
 void statetestWL(CFG *g, CacheState *mycache) {
 
+  int icount = 0;
   int currTag;
   int currSet;
-  bool updated;
 
 
   Vector<Pair<Block *,CacheState *>> todo;
@@ -633,37 +633,24 @@ void statetestWL(CFG *g, CacheState *mycache) {
 
   
   while (!todo.isEmpty()){
+    icount++;
     auto curPair = todo.pop();
     auto curBlock = curPair.fst;
     auto curCacheState = curPair.snd;
 
-    //curCacheState->displayState();
-    //cout << "copy now :" << endl;
-    //curCacheState->copy()->displayState();
-    //cout << endl << endl;
-
-
     if (curBlock->isEntry()) {
       for (auto e: curBlock->outEdges()){
           auto sink = e->sink();
-          // if s \in S_sink
           if(!curCacheState->existsIn(sink)){
-            cout << "from entry, adding : " << sink << endl;
             todo.add(pair(sink,curCacheState->copy()));
-          } else {
-            cout << "from entry, not    : " << sink << endl;
           }
         }
     } else if(curBlock->isExit()) {
       
       for (auto caller: curBlock->cfg()->callers()){
-        cout << "caller : " << caller << endl;
         for (auto e: caller->outEdges()){
           auto sink = e->sink();
-          cout << "---- sink : " << sink << endl;
-          // if s \in S_sink
           if(!curCacheState->existsIn(sink)){
-            cout << "---- adding : " << sink << endl;
             todo.add(pair(sink,curCacheState->copy()));
           }
         }
@@ -671,10 +658,7 @@ void statetestWL(CFG *g, CacheState *mycache) {
 
     } else if(curBlock->isSynth()) {
       if ( curBlock->toSynth()->callee() != nullptr ){
-        cout << "from synth, adding : " << curBlock->toSynth()->callee()->entry() << endl;
         todo.add(pair(curBlock->toSynth()->callee()->entry(),curCacheState));
-      } else {
-        cout << "from synth, not    : unknown synth block" << endl;
       }
 
     } else if (curBlock->isBasic()) {
@@ -700,14 +684,12 @@ void statetestWL(CFG *g, CacheState *mycache) {
       for (auto e: curBlock->outEdges()){
         auto sink = e->sink();
         if(!curCacheState->existsIn(sink)){
-          cout << "from basic, adding : " << sink << endl;
           todo.add(pair(sink,curCacheState->copy()));
-        } else {
-          cout << "from basic, not    : " << sink << endl;
         }
       }
     }
   }
+  cout << icount << " iterations" << endl;
 }
 
 void statetest(CFG *g, CacheState *mycache, string indent = "") {
