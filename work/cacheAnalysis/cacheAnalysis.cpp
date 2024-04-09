@@ -145,10 +145,6 @@ void CacheState::updatePLRU(otawa::address_t toAdd){
 }
 
 
-
-
-
-
 bool CacheState::existsIn(otawa::Block* blockCheck){
   bool contains = false;
   int currTag = -1;
@@ -230,7 +226,7 @@ void initState(CFG *g, CacheState *mycache, string indent = "") {
 }
 
 
-void statetestWL(CFG *g, CacheState *mycache) {
+void computeAnalysis(CFG *g, CacheState *mycache) {
 
   int icount = 0;
   int currTag;
@@ -305,36 +301,6 @@ void statetestWL(CFG *g, CacheState *mycache) {
     }
   }
   cout << icount << " iterations" << endl;
-}
-
-void statetest(CFG *g, CacheState *mycache, string indent = "") {
-  if (g == nullptr) {
-    return;
-  }
-  int currTag;
-  int currSet;
-	for(auto v: *g){
-		if(v->isSynth()) {
-			statetest(v->toSynth()->callee(), mycache, indent + "\t");
-    } else if (v->isBasic()) {
-      currTag = -1;
-      currSet = -1;
-      for (auto inst : *v->toBasic()){
-        if (currTag != mycache->getTag(inst->address())
-            || currSet != mycache->getSet(inst->address()) ){
-
-          currTag = mycache->getTag(inst->address());
-          currSet = mycache->getSet(inst->address());
-
-          State* newState = mycache->getSubState(inst->address());
-          SAVED(v)->add(newState, currSet);
-
-          mycache->update(inst->address());
-
-        }
-      }
-    }
-  }
 }
 
 
@@ -448,7 +414,7 @@ protected:
     cout << "init" << endl;
     initState(maincfg, &mycache);
     cout << "init done\n --------------- \nwork" << endl;
-    statetestWL(maincfg, &mycache);
+    computeAnalysis(maincfg, &mycache);
 
     mySW.stop();
 
