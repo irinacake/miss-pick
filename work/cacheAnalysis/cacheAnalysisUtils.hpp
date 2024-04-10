@@ -48,6 +48,11 @@ class State {
    */
   bool equals(State* state2);
 
+  inline otawa::hard::Cache::block_t getValue(int pos) {
+    ASSERTP(pos >= 0 && pos < size, "In State.getValue() : argument 'pos', index out of bound.");
+    return state[pos]; 
+    }
+
   friend elm::io::Output &operator<<(elm::io::Output &output, const State &state);
 
 private:
@@ -231,18 +236,20 @@ public:
 
   virtual CacheState* copy() { return new CacheState(*this); }
 
-  bool existsIn(otawa::Block* blockCheck);
+  //bool existsIn(otawa::Block* blockCheck);
+  //bool existsIn(otawa::Block* blockCheck, int set);
 
 
   // Various Getters
   inline const otawa::hard::Cache* getCache(){return cache;}
 
-  inline AllocArray<otawa::hard::Cache::block_t>* getState(){return &state;}
+  inline AllocArray<State *>* getState(){return &state;}
 
   inline otawa::hard::Cache::block_t getTag(otawa::address_t toAdd) {return cache->block(toAdd);}
 
   inline otawa::hard::Cache::set_t getSet(otawa::address_t toAdd) {return cache->set(toAdd);}
 
+  inline int getNbSets() {return nbSets;}
   /**
    * @fn getSubState
    * Instantiates a new State object, initialises it and
@@ -253,7 +260,12 @@ public:
    * that represents the state of the cache set of the
    * given instruction's address.
   */
-  State* getSubState(otawa::address_t toGet);
+  State* getSubState(int set) {
+    ASSERTP(set >= 0 && set < nbWays, "In getSubState() : argument 'set', index out of bound.");
+    return state[set];
+  }
+
+  State* newSubState(int set);
 
 private:
   int nbWays;
@@ -261,7 +273,7 @@ private:
   int nbSets;
   AllocArray<int> currIndexFIFO;
   AllocArray<elm::t::uint64> accessBitsPLRU;
-  AllocArray<otawa::hard::Cache::block_t> state;
+  AllocArray<State *> state;
   const otawa::hard::Cache* cache;
 
 };

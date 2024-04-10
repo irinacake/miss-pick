@@ -39,19 +39,20 @@ void CacheState::updateLRU(otawa::address_t toAdd){
   
   // search loop : break before incrementing if the same tag is found
   while (pos < nbWays - 1){ 
-    if (toAddTag == state[toAddSet * nbWays + pos]) break;
+    if (toAddTag == state[toAddSet]->getValue(pos)) break;
     pos++;
   }
   
   // reverse loop : overwrite the current tag (pos) with the 
   // immediately younger tag (pos-1)
   while (pos > 0){
-    state[toAddSet * nbWays + pos] = state[toAddSet * nbWays + pos-1];
+    state[toAddSet]->setValue(pos,state[toAddSet]->getValue(pos-1));
+    //state[toAddSet * nbWays + pos] = state[toAddSet * nbWays + pos-1];
     pos--;
   }
 
   // set age 0 with the new tag
-  state[toAddSet * nbWays + pos] = toAddTag;
+  state[toAddSet]->setValue(pos,toAddTag);
   
   //displayState();
   //cout << endl;
@@ -67,7 +68,7 @@ void CacheState::updateFIFO(otawa::address_t toAdd){
   
   // search loop : break before incrementing if the same tag is found
   while (pos < nbWays && !found){
-    if (toAddTag == state[toAddSet * nbWays + pos]) {
+    if (toAddTag == state[toAddSet]->getValue(pos)) {
       found = true;
       break;
     }
@@ -75,7 +76,7 @@ void CacheState::updateFIFO(otawa::address_t toAdd){
   }
 
   if (!found) {
-    state[toAddSet * nbWays + currIndexFIFO[toAddSet]] = toAddTag;
+    state[toAddSet]->setValue(currIndexFIFO[toAddSet],toAddTag);
     currIndexFIFO[toAddSet] = (currIndexFIFO[toAddSet]+1) % nbWays;
   }
 
@@ -94,7 +95,7 @@ void CacheState::updatePLRU(otawa::address_t toAdd){
   
   // search loop : break before incrementing if the same tag is found
   while (pos < nbWays && !found){ 
-    if (toAddTag == state[toAddSet * nbWays + pos]) {
+    if (toAddTag == state[toAddSet]->getValue(pos)) {
       found = true;
       break;
     }
@@ -137,7 +138,7 @@ void CacheState::updatePLRU(otawa::address_t toAdd){
     }
   
     // set new tag at access
-    state[toAddSet * nbWays + access] = toAddTag;
+    state[toAddSet]->setValue(access,toAddTag);
   }
 
   //displayState();
@@ -145,12 +146,17 @@ void CacheState::updatePLRU(otawa::address_t toAdd){
 }
 
 
+/*
+
 bool CacheState::existsIn(otawa::Block* blockCheck){
+  cout << "Begin exists in" << endl;
   bool contains = false;
   int currTag = -1;
   int currSet = -1;
 
   if (blockCheck->isBasic()){
+    contains = true;
+    cout << "is Basic" << endl;
     for (auto inst : *blockCheck->toBasic()){
       if (currTag != getTag(inst->address())
           || currSet != getSet(inst->address()) ){
@@ -158,22 +164,45 @@ bool CacheState::existsIn(otawa::Block* blockCheck){
         currTag = getTag(inst->address());
         currSet = getSet(inst->address());
 
+        cout << "testing contains" << endl;
         if ((SAVED(blockCheck)->contains(getSubState(inst->address()),currSet))){
-          return true;
-        } 
+          cout << "contains" << endl;
+          //contains &= true;
+        } else {
+          cout << "is not.." << endl;
+          contains &= false;
+        }
       }
     }
   }
-  return false;
+  return contains;
 }
 
 
-State* CacheState::getSubState(otawa::address_t toGet){
-  auto toGetSet = cache->set(toGet);
+
+bool CacheState::existsIn(otawa::Block* blockCheck, int set){
+  cout << "hi" << endl;
+
   State* newState = new State(nbWays);
   int pos = 0;
   while (pos < nbWays){ 
-    newState->setValue(pos,state[toGetSet * nbWays + pos]);
+    newState->setValue(pos,state[set]->getValue(pos));
+    pos++;
+  }
+
+  if ((SAVED(blockCheck)->contains(newState,set))){
+    return true;
+  } 
+  return false;
+}
+
+*/
+
+State* CacheState::newSubState(int set){
+  State* newState = new State(nbWays);
+  int pos = 0;
+  while (pos < nbWays){ 
+    newState->setValue(pos,state[set]->getValue(pos));
     pos++;
   }
   return newState;
@@ -225,6 +254,7 @@ void initState(CFG *g, CacheState *mycache, string indent = "") {
   }
 }
 
+/*
 
 void computeAnalysis(CFG *g, CacheState *mycache) {
 
@@ -244,30 +274,41 @@ void computeAnalysis(CFG *g, CacheState *mycache) {
     auto curBlock = curPair.fst;
     auto curCacheState = curPair.snd;
 
+    cout << "\nTodo: " << curBlock << endl;
+    cout << "Initial State :" << endl;
+    curCacheState->displayState();
+
     if (curBlock->isEntry()) {
+      cout << "is Entry block:" << endl;
       for (auto e: curBlock->outEdges()){
-          auto sink = e->sink();
-          if(!curCacheState->existsIn(sink)){
-            todo.add(pair(sink,curCacheState->copy()));
-          }
+        auto sink = e->sink();
+        if(!curCacheState->existsIn(sink)){
+          cout << "- Adding " << sink << endl;
+          todo.add(pair(sink,curCacheState->copy()));
         }
+      }
     } else if(curBlock->isExit()) {
-      
+      cout << "is Exit block:" << endl;
       for (auto caller: curBlock->cfg()->callers()){
         for (auto e: caller->outEdges()){
           auto sink = e->sink();
           if(!curCacheState->existsIn(sink)){
+            cout << "- Adding " << sink << endl;
             todo.add(pair(sink,curCacheState->copy()));
           }
         }
       }
 
     } else if(curBlock->isSynth()) {
+      cout << "is Synth block:" << endl;
       if ( curBlock->toSynth()->callee() != nullptr ){
+        cout << "- Adding " << curBlock->toSynth()->callee()->entry() << endl;
         todo.add(pair(curBlock->toSynth()->callee()->entry(),curCacheState));
       }
 
     } else if (curBlock->isBasic()) {
+
+      cout << "is Basic block:" << endl;
 
       currTag = -1;
       currSet = -1;
@@ -279,10 +320,13 @@ void computeAnalysis(CFG *g, CacheState *mycache) {
           currTag = curCacheState->getTag(inst->address());
           currSet = curCacheState->getSet(inst->address());
 
+          cout << "Getting new substate" << endl;
           State* newState = curCacheState->getSubState(inst->address());
+          cout << "Adding to SAVED" << endl;
           SAVED(curBlock)->add(newState, currSet);
 
-          cout << "\nbefore (" << curBlock->index() << ") :" << endl;
+          cout << "Updating cache" << endl;
+          cout << "before (" << curBlock->index() << ") :" << endl;
           curCacheState->displayState();
           curCacheState->update(inst->address());
           cout << "after :" << endl;
@@ -294,8 +338,126 @@ void computeAnalysis(CFG *g, CacheState *mycache) {
 
       for (auto e: curBlock->outEdges()){
         auto sink = e->sink();
+        cout << "Verifying exist" << endl;
         if(!curCacheState->existsIn(sink)){
+          cout << "- Adding " << sink << endl;
           todo.add(pair(sink,curCacheState->copy()));
+        }
+      }
+    }
+  }
+  cout << icount << " iterations" << endl;
+}
+
+*/
+
+void computeAnalysisSetBySet(CFG *g, CacheState *mycache) {
+
+  int icount = 0;
+
+  int currSet = 0;
+  int currTag = 0;
+
+  bool updated = false;
+  
+
+  Vector<Pair<Block *,CacheState *>> todo;
+
+  for (int set = 0; set < mycache->getNbSets(); set++) {
+
+    cout << "computing new set : " << set << endl;
+
+
+    todo.add(pair(g->entry(),mycache->copy()));
+
+    
+    while (!todo.isEmpty()){
+      icount++;
+      auto curPair = todo.pop();
+      auto curBlock = curPair.fst;
+      auto curCacheState = curPair.snd;
+      
+      cout << "\nTodo: " << curBlock << endl;
+      cout << "Initial State :" << endl;
+      curCacheState->displayState();
+
+      if (curBlock->isEntry()) {
+        cout << "is Entry block:" << endl;
+        for (auto e: curBlock->outEdges()){
+          auto sink = e->sink();
+          if(!sink->isBasic() || !SAVED(sink)->contains(curCacheState->getSubState(set),set)){
+            cout << "- Adding " << sink << endl;
+            todo.add(pair(sink,curCacheState->copy()));
+          }
+        }
+      } else if(curBlock->isExit()) {
+        cout << "is Exit block:" << endl;
+        for (auto caller: curBlock->cfg()->callers()){
+          for (auto e: caller->outEdges()){
+            auto sink = e->sink();
+            if(!sink->isBasic() || !SAVED(sink)->contains(curCacheState->getSubState(set),set)){
+              cout << "- Adding " << sink << endl;
+              todo.add(pair(sink,curCacheState->copy()));
+            }
+          }
+        }
+
+      } else if(curBlock->isSynth()) {
+        cout << "is Synth block:" << endl;
+        if ( curBlock->toSynth()->callee() != nullptr ){
+          cout << "- Adding " << curBlock->toSynth()->callee()->entry() << endl;
+          todo.add(pair(curBlock->toSynth()->callee()->entry(),curCacheState));
+        }
+
+      } else if (curBlock->isBasic()) {
+        
+        cout << "is Basic block:" << endl;
+        cout << "Before : " << **SAVED(curBlock) << endl;
+
+        currTag = -1;
+        currSet = -1;
+        updated = false;
+
+        for (auto inst : *curBlock->toBasic()){
+          //cout << "set1 : " << set << endl;
+          //cout << "set2 : " << curCacheState->getSet(inst->address()) << endl;
+
+          cout << curCacheState->getTag(inst->address()) << endl;
+
+          if (currTag != curCacheState->getTag(inst->address())
+            || currSet != curCacheState->getSet(inst->address()) ){
+
+            currTag = curCacheState->getTag(inst->address());
+            currSet = curCacheState->getSet(inst->address());
+
+            State* newState = curCacheState->newSubState(set);
+
+            if (set == currSet){
+              SAVED(curBlock)->add(newState, set);
+              //cout << "inst matches current set" << endl;
+              curCacheState->update(inst->address());
+              updated = true;
+            } else if (!updated){
+              SAVED(curBlock)->add(newState, set);
+            }
+
+          }
+
+        }
+
+        // SaveState should have null ?
+        // how to not add a block that is not concerned
+        // but sometimes you still want to add a BB that
+        // will then forward
+        cout << "After : " << **SAVED(curBlock) << endl;
+
+        for (auto e: curBlock->outEdges()){
+          auto sink = e->sink();
+          cout << "Verifying exist (Basic)" << endl;
+          if(!sink->isBasic() || !SAVED(sink)->contains(curCacheState->getSubState(set),set)){
+            cout << "- Adding " << sink << endl;
+            todo.add(pair(sink,curCacheState->copy()));
+          }
         }
       }
     }
@@ -414,11 +576,13 @@ protected:
     cout << "init" << endl;
     initState(maincfg, &mycache);
     cout << "init done\n --------------- \nwork" << endl;
-    computeAnalysis(maincfg, &mycache);
+    printStates(maincfg, &mycache);
+    mycache.displayState();
+    //computeAnalysis(maincfg, &mycache);
+    computeAnalysisSetBySet(maincfg, &mycache);
 
     mySW.stop();
 
-    //printStates(maincfg, &mycache);
     cout << "Policy : " << icache->replacementPolicy() << endl;
     //mycache.displayState();
     cout << endl;

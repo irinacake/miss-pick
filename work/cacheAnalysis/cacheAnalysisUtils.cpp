@@ -20,18 +20,25 @@ void printbits(elm::t::uint64 n){
 
 
 State::State(int isize): size(isize) {
-    state = new otawa::hard::Cache::block_t[size];
+  state = new otawa::hard::Cache::block_t[size];
 }
 
 bool State::equals(State* state2){
-    if (this->size == state2->size) {
-        for (int i = 0; i < this->size; i++) {
-        if (this->state[i] != state2->state[i]) return false;
-        }
-        return true;
-    } else {
+  //cout << "1 : " << *this << endl;
+  //cout << "2 : " << *state2 << endl;
+  if (this->size == state2->size) {
+    for (int i = 0; i < this->size; i++) {
+      if (this->state[i] != state2->state[i]){
+        //cout << "false" << endl;
         return false;
+      }
     }
+    //cout << "true" << endl;
+    return true;
+  } else {
+    //cout << "false" << endl;
+    return false;
+  }
 }
 
 // Redefinition of the << operator for the State class
@@ -71,20 +78,25 @@ void SaveState::setCache(const otawa::hard::Cache* icache){
 }
 
 void SaveState::setCache(int setCount){
-    size = setCount;
-    saved = new List<State *> [size];
-    listSizes = new int[size];
-    for (int i = 0; i < size; i++){
-        listSizes[i] = 0;
-    }
+  size = setCount;
+  saved = new List<State *> [size];
+  listSizes = new int[size];
+  for (int i = 0; i < size; i++){
+    listSizes[i] = 0;
+  }
 }
 
 void SaveState::add(State *newState, int set) {
-    ASSERTP(set >= 0 && set < size, "In SaveState.add() : argument 'set', index out of bound.");
-    if (!(saved[set].contains(newState))){
-        listSizes[set]++;
-        saved[set].add(newState);
-    }
+  ASSERTP(set >= 0 && set < size, "In SaveState.add() : argument 'set', index out of bound.");
+  if (!(saved[set].contains(newState))){
+    cout << "Adding new state" << endl;
+    listSizes[set]++;
+    saved[set].add(newState);
+      //return true;
+  } else {
+    cout << "not Adding new state" << endl;
+  }
+  //return false;
 }
 
 bool SaveState::contains(State *newState, int set){
@@ -115,7 +127,7 @@ elm::io::Output &operator<<(elm::io::Output &output, const SaveState &saveState)
 
 CacheState::CacheState(const otawa::hard::Cache* icache): cache(icache), nbSets(icache->setCount()), nbWays((int)pow(2,icache->wayBits())), logNbWays(icache->wayBits()) { 
   ASSERTP(logNbWays < 7, "CacheState: cache way limit is 2^6");
-  state.allocate(nbSets * nbWays);
+  state.allocate(nbSets);
 
   currIndexFIFO.allocate(nbSets);
   accessBitsPLRU.allocate(nbSets);
@@ -123,8 +135,9 @@ CacheState::CacheState(const otawa::hard::Cache* icache): cache(icache), nbSets(
     currIndexFIFO[e] = 0;
     accessBitsPLRU[e] = 0;
   } 
-  for (int e=0; e < (nbSets * nbWays); e++) {
-    state[e] = otawa::hard::Cache::block_t(-1);
+
+  for (int e=0; e < (nbSets); e++) {
+    state[e] = new State(nbWays);
   } 
 }
 
@@ -163,14 +176,7 @@ void CacheState::displayState(){
   //TODO use "cout" as an argument (output something)
   for (int i=0; i < nbSets ; i++) {
     cout << i << "\t:\t";
-    for (int j=0; j < nbWays; j++){
-      if ( state[i * nbWays + j] == otawa::hard::Cache::block_t(-1)) {
-        cout << "null" << "  ";
-      } else {
-        cout << state[i * nbWays + j] << "  ";
-      }
-    }
-    cout << endl;
+    cout << *state[i] << endl;
   }
 }
 
