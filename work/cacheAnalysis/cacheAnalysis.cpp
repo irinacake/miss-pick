@@ -26,6 +26,7 @@ using namespace otawa;
 
 
 
+
 p::id<SaveState*> SAVED("SAVED");
 
 
@@ -224,9 +225,11 @@ void printStates(CFG *g, CacheState *mycache, string indent = "") {
     if (!MARKPRINT(v)){
       MARKPRINT(v) = true;
       if(v->isSynth()) {
+        cout << indent << v << endl;
         printStates(v->toSynth()->callee(), mycache, indent + "\t");
       } else if (v->isBasic()) {
-        cout << indent << **SAVED(v) << endl;
+        cout << "isExit" << v->isExit() << endl;
+        cout << indent << v << **SAVED(v) << endl;
       }
     }
   }
@@ -351,6 +354,7 @@ void computeAnalysis(CFG *g, CacheState *mycache) {
 
 */
 
+
 void computeAnalysisSetBySet(CFG *g, CacheState *mycache) {
 
   int icount = 0;
@@ -365,7 +369,7 @@ void computeAnalysisSetBySet(CFG *g, CacheState *mycache) {
 
   for (int set = 0; set < mycache->getNbSets(); set++) {
 
-    cout << "computing new set : " << set << endl;
+    DEBUG("computing new set : " << set << endl);
 
 
     todo.add(pair(g->entry(),mycache->copy()));
@@ -377,85 +381,78 @@ void computeAnalysisSetBySet(CFG *g, CacheState *mycache) {
       auto curBlock = curPair.fst;
       auto curCacheState = curPair.snd;
       
-      cout << "\nTodo: " << curBlock << endl;
-      cout << "Initial State :" << endl;
-      curCacheState->displayState();
+      DEBUG("\nTodo: " << curBlock << endl);
+      DEBUG("Initial State :" << endl);
+      SPEDEBUG(curCacheState->displayState();)
 
       if (curBlock->isEntry()) {
-        cout << "is Entry block:" << endl;
+        DEBUG("is Entry block:" << endl);
         for (auto e: curBlock->outEdges()){
           auto sink = e->sink();
           if(!sink->isBasic() || !SAVED(sink)->contains(curCacheState->getSubState(set),set)){
-            cout << "- Adding " << sink << endl;
+            DEBUG("- Adding " << sink << endl);
             todo.add(pair(sink,curCacheState->copy()));
           }
         }
       } else if(curBlock->isExit()) {
-        cout << "is Exit block:" << endl;
+        DEBUG("is Exit block:" << endl);
         for (auto caller: curBlock->cfg()->callers()){
           for (auto e: caller->outEdges()){
             auto sink = e->sink();
             if(!sink->isBasic() || !SAVED(sink)->contains(curCacheState->getSubState(set),set)){
-              cout << "- Adding " << sink << endl;
+              DEBUG("- Adding " << sink << endl);
               todo.add(pair(sink,curCacheState->copy()));
             }
           }
         }
 
       } else if(curBlock->isSynth()) {
-        cout << "is Synth block:" << endl;
+        DEBUG("is Synth block:" << endl);
         if ( curBlock->toSynth()->callee() != nullptr ){
-          cout << "- Adding " << curBlock->toSynth()->callee()->entry() << endl;
+          DEBUG("- Adding " << curBlock->toSynth()->callee()->entry() << endl);
           todo.add(pair(curBlock->toSynth()->callee()->entry(),curCacheState));
         }
 
       } else if (curBlock->isBasic()) {
         
-        cout << "is Basic block:" << endl;
-        cout << "Before : " << **SAVED(curBlock) << endl;
-
         currTag = -1;
-        currSet = -1;
-        updated = false;
+
+        DEBUG("is Basic block:" << endl);
+        DEBUG("Before : " << **SAVED(curBlock) << endl);
+              
+        State* newState = curCacheState->newSubState(set);
+        SAVED(curBlock)->add(newState, set);
+
+        DEBUG("After : " << **SAVED(curBlock) << endl);
 
         for (auto inst : *curBlock->toBasic()){
-          //cout << "set1 : " << set << endl;
-          //cout << "set2 : " << curCacheState->getSet(inst->address()) << endl;
+          //DEBUG("set1 : " << set << endl);
+          //DEBUG("set2 : " << curCacheState->getSet(inst->address()) << endl);
+          DEBUG(curCacheState->getTag(inst->address()) << endl);
 
-          cout << curCacheState->getTag(inst->address()) << endl;
-
-          if (currTag != curCacheState->getTag(inst->address())
-            || currSet != curCacheState->getSet(inst->address()) ){
-
+          if (currTag != curCacheState->getTag(inst->address())){
+            DEBUG(" - new tag" << endl;)
             currTag = curCacheState->getTag(inst->address());
-            currSet = curCacheState->getSet(inst->address());
 
-            State* newState = curCacheState->newSubState(set);
-
-            if (set == currSet){
-              SAVED(curBlock)->add(newState, set);
-              //cout << "inst matches current set" << endl;
+            if (set == curCacheState->getSet(inst->address())){
+              DEBUG("   - matches set" << endl;)
               curCacheState->update(inst->address());
-              updated = true;
-            } else if (!updated){
-              SAVED(curBlock)->add(newState, set);
             }
-
           }
-
         }
 
         // SaveState should have null ?
         // how to not add a block that is not concerned
         // but sometimes you still want to add a BB that
         // will then forward
-        cout << "After : " << **SAVED(curBlock) << endl;
+        DEBUG("Final State :" << endl);
+        SPEDEBUG(curCacheState->displayState();)
 
         for (auto e: curBlock->outEdges()){
           auto sink = e->sink();
-          cout << "Verifying exist (Basic)" << endl;
+          DEBUG("Verifying exist (Basic) : " << sink << endl);
           if(!sink->isBasic() || !SAVED(sink)->contains(curCacheState->getSubState(set),set)){
-            cout << "- Adding " << sink << endl;
+            DEBUG("- Adding " << sink << endl);
             todo.add(pair(sink,curCacheState->copy()));
           }
         }
@@ -576,12 +573,14 @@ protected:
     cout << "init" << endl;
     initState(maincfg, &mycache);
     cout << "init done\n --------------- \nwork" << endl;
-    printStates(maincfg, &mycache);
-    mycache.displayState();
+    //mycache.displayState();
     //computeAnalysis(maincfg, &mycache);
     computeAnalysisSetBySet(maincfg, &mycache);
 
     mySW.stop();
+
+    //SPEDEBUG(printStates(maincfg, &mycache);)
+    printStates(maincfg, &mycache);
 
     cout << "Policy : " << icache->replacementPolicy() << endl;
     //mycache.displayState();

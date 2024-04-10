@@ -6,6 +6,15 @@
 using namespace elm;
 using namespace otawa;
 
+#ifndef NDEBUG
+#define DEBUG(x) cout << x
+#define SPEDEBUG(x) x
+#else
+#define DEBUG(x)
+#define SPEDEBUG
+#endif
+
+
 void printbits(elm::t::uint64 n);
 
 
@@ -261,7 +270,7 @@ public:
    * given instruction's address.
   */
   State* getSubState(int set) {
-    ASSERTP(set >= 0 && set < nbWays, "In getSubState() : argument 'set', index out of bound.");
+    ASSERTP(set >= 0 && set < nbSets, "In getSubState() : argument 'set', index out of bound.");
     return state[set];
   }
 

@@ -36,7 +36,7 @@ bool State::equals(State* state2){
     //cout << "true" << endl;
     return true;
   } else {
-    //cout << "false" << endl;
+    //DEBUG("false" << endl);
     return false;
   }
 }
@@ -89,12 +89,12 @@ void SaveState::setCache(int setCount){
 void SaveState::add(State *newState, int set) {
   ASSERTP(set >= 0 && set < size, "In SaveState.add() : argument 'set', index out of bound.");
   if (!(saved[set].contains(newState))){
-    cout << "Adding new state" << endl;
+    DEBUG("Adding new state" << endl);
     listSizes[set]++;
     saved[set].add(newState);
       //return true;
   } else {
-    cout << "not Adding new state" << endl;
+    DEBUG("not Adding new state" << endl);
   }
   //return false;
 }
