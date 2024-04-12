@@ -15,6 +15,7 @@
 #include <elm/sys/StopWatch.h>
 
 #include <elm/options.h>
+#include <elm/sys/FileItem.h>
 
 
 #include "cacheAnalysisUtils.hpp"
@@ -225,10 +226,40 @@ void printStates(CFG *g, CacheState *mycache, string indent = "") {
     if (!MARKPRINT(v)){
       MARKPRINT(v) = true;
       if(v->isSynth()) {
+        /*
+        if (v->toSynth()->callee() == nullptr){
+          if (v->isCall()){
+            cout << "isCall" << endl;
+          }
+          cout << v << endl;
+          for (auto e: v->inEdges()){
+            cout << "source " << e->source() << endl;
+          }
+          for (auto e: v->outEdges()){
+            cout << "sink " << e->sink() << endl;
+          }
+
+          cout << endl << endl;
+        }*/
+
         cout << indent << v << endl;
         printStates(v->toSynth()->callee(), mycache, indent + "\t");
       } else if (v->isBasic()) {
-        cout << "isExit" << v->isExit() << endl;
+        /*
+        if (v->isCall()){
+          cout << "hello" << endl;
+          cout << v << endl;
+          for (auto e: v->inEdges()){
+            cout << "source " << e->source() << endl;
+          }
+          for (auto e: v->outEdges()){
+            cout << "sink " << e->sink() << endl;
+          }
+
+          cout << endl << endl;
+        }
+        */
+        //cout << indent << v << endl;
         cout << indent << v << **SAVED(v) << endl;
       }
     }
@@ -411,6 +442,15 @@ void computeAnalysisSetBySet(CFG *g, CacheState *mycache) {
         if ( curBlock->toSynth()->callee() != nullptr ){
           DEBUG("- Adding " << curBlock->toSynth()->callee()->entry() << endl);
           todo.add(pair(curBlock->toSynth()->callee()->entry(),curCacheState));
+        } else {
+          for (auto e: curBlock->outEdges()){
+            auto sink = e->sink();
+            if(!sink->isBasic() || !SAVED(sink)->contains(curCacheState->getSubState(set),set)){
+              DEBUG("- Adding " << sink << endl);
+              // use another cacheState with all element set to "T" (unknown)
+              todo.add(pair(sink,curCacheState->copy()));
+            }
+          }
         }
 
       } else if (curBlock->isBasic()) {
@@ -459,7 +499,7 @@ void computeAnalysisSetBySet(CFG *g, CacheState *mycache) {
       }
     }
   }
-  cout << icount << " iterations" << endl;
+  //cout << icount << " iterations" << endl;
 }
 
 
@@ -493,7 +533,7 @@ void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysC
 }
 
 
-void makeStats(CFG *g, CacheState *mycache) {
+void makeStats(CFG *g, CacheState *mycache, elm::io::Output &output) {
   int waysCount = mycache->getCache()->setCount();
   int mins[waysCount];
   int maxs[waysCount];
@@ -510,30 +550,37 @@ void makeStats(CFG *g, CacheState *mycache) {
   getStats(g, mins, maxs, moys, bbCount, waysCount);
 
   
-  cout << "bbcount : ";
-  for (int i = 0; i < waysCount; i++){
-    cout << bbCount[i] << " ";
-  }
-  cout << endl;
 
-  cout << "mins : ";
-  for (int i = 0; i < waysCount; i++){
-    cout << mins[i] << " ";
+  output << "\t\t\t\"bb_count\" : [";
+  output << bbCount[0];
+  for (int i = 1; i < waysCount; i++){
+    output << "," << bbCount[i];
   }
-  cout << endl;
+  output << "],\n";
 
-  cout << "maxs : ";
-  for (int i = 0; i < waysCount; i++){
-    cout << maxs[i] << " ";
+
+  output << "\t\t\t\"state_mins\" : [";
+  output << mins[0];
+  for (int i = 1; i < waysCount; i++){
+    output << "," << mins[i];
   }
-  cout << endl;
+  output << "],\n";
 
-  cout << "moys : ";
-  for (int i = 0; i < waysCount; i++){
+  output << "\t\t\t\"state_maxs\" : [";
+  output << maxs[0];
+  for (int i = 1; i < waysCount; i++){
+    output << "," << maxs[i];
+  }
+  output << "],\n";
+
+  output << "\t\t\t\"state_moys\" : [";
+  moys[0] /= bbCount[0];
+  output << moys[0];
+  for (int i = 1; i < waysCount; i++){
     moys[i] /= bbCount[i];
-    cout << moys[i] << " ";
+    output << "," << moys[i];
   }
-  cout << endl;
+  output << "]\n";
 }
 
 
@@ -568,27 +615,55 @@ protected:
     CacheState mycache(icache);
 
 
+
+
+    auto resultfile = io::FileOutput("results.json",true);
+
     mySW.start();
 
-    cout << "init" << endl;
+/*
+{
+  "file" : "",
+  "task" : "",
+  "policy" : "",
+  "bsize" : ,
+  "associativity" : ,  // waybits
+  "set_count" : ,  // rowbits
+  "exec_time" : ,
+  "state_count" : [,,,],
+  "state_mins" : [,,,],
+  "state_maxs" : [,,,],
+  "state_moys" : [,,,]
+}
+*/
+
+    resultfile.flush();
+    resultfile << "\t\t{\n";
+    resultfile << "\t\t\t\"file\" : \"" << "TDB" << "\",\n";  //get name of the input file
+    resultfile << "\t\t\t\"task\" : \"" << entry << "\",\n";
+    resultfile << "\t\t\t\"policy\" : \"" << icache->replacementPolicy() << "\",\n";
+    
+    resultfile << "\t\t\t\"bsize\" : " << icache->blockCount() << ",\n";
+    resultfile << "\t\t\t\"associativity\" : " << (int)pow(2,icache->wayBits()) << ",\n";
+    resultfile << "\t\t\t\"set_count\" : " << icache->setCount() << ",\n";
+
+
+
     initState(maincfg, &mycache);
-    cout << "init done\n --------------- \nwork" << endl;
-    //mycache.displayState();
     //computeAnalysis(maincfg, &mycache);
     computeAnalysisSetBySet(maincfg, &mycache);
 
     mySW.stop();
-
-    //SPEDEBUG(printStates(maincfg, &mycache);)
-    printStates(maincfg, &mycache);
-
-    cout << "Policy : " << icache->replacementPolicy() << endl;
     //mycache.displayState();
-    cout << endl;
 
-    makeStats(maincfg, &mycache);
+    resultfile << "\t\t\t\"exec_time\" : " << mySW.delay().micros() << ",\n";
+
+    makeStats(maincfg, &mycache, resultfile);
     
-    cout << "time : " << mySW.delay() << endl;
+
+    resultfile << "\t\t},\n";
+
+    resultfile.flush();
     
   }
 

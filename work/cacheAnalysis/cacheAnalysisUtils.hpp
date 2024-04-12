@@ -7,8 +7,8 @@ using namespace elm;
 using namespace otawa;
 
 #ifndef NDEBUG
-#define DEBUG(x) cout << x
-#define SPEDEBUG(x) x
+#define DEBUG(x) //cout << x
+#define SPEDEBUG(x) //x
 #else
 #define DEBUG(x)
 #define SPEDEBUG
