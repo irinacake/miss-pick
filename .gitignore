@@ -31,3 +31,7 @@ tacle-bench/
 
 p1.dot
 p2.dot
+
+
+*.out
+*.o
