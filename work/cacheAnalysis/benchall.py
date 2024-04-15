@@ -1,12 +1,21 @@
-import os, sys, json
+import os, json
 from pathlib import Path
-from time import sleep
+import shlex
+from subprocess import Popen, PIPE
+from threading import Timer
 
-
+def run(cmd, timeout_sec):
+    proc = Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)
+    timer = Timer(timeout_sec, proc.kill)
+    try:
+        timer.start()
+        stdout, stderr = proc.communicate()
+    finally:
+        timer.cancel()
 
 
 #folders = [Path("tacle-bench/bench/app"), Path("tacle-bench/bench/kernel"), Path("tacle-bench/bench/parallel"), Path("tacle-bench/bench/sequential")]
-folders = [Path("tacle-bench/bench/kernel")]
+folders = [Path("tacle-bench/bench/kernel"), Path("tacle-bench/bench/sequential")]
 #folders = []
 
 banned = ["susan", "rosace"]
@@ -37,18 +46,30 @@ for folder in folders:
 
             if os.path.basename(subfolder) not in banned :
                 print("\n----------------------------------------------------------")
-                print("./bin/cacheAnalysis " + elf + " " + task['name'] + " -c mycacheLRU.xml")
-                print()
-                os.system("./bin/cacheAnalysis " + elf + " " + task['name'] + " -c mycacheLRU.xml" )
+                for way in [4,8]:
+                    for row in [32,256]:
+                        print("./bin/cacheAnalysis " + elf + " "
+                              + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml" )
+                        run("./bin/cacheAnalysis " + elf + " "
+                                  + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml", 180)
+                        #os.system("./bin/cacheAnalysis " + elf + " "
+                        #          + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml" )
+                        
+                        print("./bin/cacheAnalysis " + elf + " "
+                              + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml" )
+                        run("./bin/cacheAnalysis " + elf + " "
+                                  + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml", 180)
+                        #os.system("./bin/cacheAnalysis " + elf + " "
+                        #          + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml" )
+                        
+                        print("./bin/cacheAnalysis " + elf + " "
+                              + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml" )
+                        run("./bin/cacheAnalysis " + elf + " "
+                                  + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml",180)
+                        #os.system("./bin/cacheAnalysis " + elf + " "
+                        #          + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml" )
                 print("----------------------------------------------------------")
-        
 
-
-        #print(taskjson)
-
-
-#def line_prepender(filename, line):
-#    with open(filename, 'r+') as f:
 
 
 result = open("results.json",'r+')

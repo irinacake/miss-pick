@@ -2,20 +2,20 @@
 
 
 
-void printbits(elm::t::uint64 n){
+void printbits(elm::t::uint64 n, elm::io::Output &output = cout){
   auto i = 1UL << 7;
   auto pcpt = 1;
   while(i>0){
     if(n&i)
-      cout << 1;
+      output << 1;
     else 
-      cout << 0;
+      output << 0;
     i >>= 1;
     if (pcpt % 8 == 0)
-      cout << " ";
+      output << " ";
     pcpt++;
   }
-  cout << io::endl;
+  output << io::endl;
 }
 
 
@@ -24,19 +24,14 @@ State::State(int isize): size(isize) {
 }
 
 bool State::equals(State* state2){
-  //cout << "1 : " << *this << endl;
-  //cout << "2 : " << *state2 << endl;
   if (this->size == state2->size) {
     for (int i = 0; i < this->size; i++) {
       if (this->state[i] != state2->state[i]){
-        //cout << "false" << endl;
         return false;
       }
     }
-    //cout << "true" << endl;
     return true;
   } else {
-    //DEBUG("false" << endl);
     return false;
   }
 }
@@ -92,11 +87,9 @@ void SaveState::add(State *newState, int set) {
     DEBUG("Adding new state" << endl);
     listSizes[set]++;
     saved[set].add(newState);
-      //return true;
   } else {
     DEBUG("not Adding new state" << endl);
   }
-  //return false;
 }
 
 bool SaveState::contains(State *newState, int set){
@@ -172,11 +165,10 @@ void CacheState::update(otawa::address_t toAdd){
 }
 
 
-void CacheState::displayState(){
-  //TODO use "cout" as an argument (output something)
+void CacheState::displayState(elm::io::Output &output = cout){
   for (int i=0; i < nbSets ; i++) {
-    cout << i << "\t:\t";
-    cout << *state[i] << endl;
+    output << i << "\t:\t";
+    output << *state[i] << endl;
   }
 }
 

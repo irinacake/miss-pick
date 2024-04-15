@@ -15,7 +15,14 @@ using namespace otawa;
 #endif
 
 
-void printbits(elm::t::uint64 n);
+/**
+ * @fn printbits
+ * A function that prints a uint64 in binary form,
+ * 8 bits by 8 bits
+ * 
+ * @param n the uint64 to print
+*/
+void printbits(elm::t::uint64 n, elm::io::Output &output = cout);
 
 
 /**
@@ -49,6 +56,19 @@ class State {
   }
 
   /**
+   * @fn getValue
+   * Returns the value of an element of the state table.
+   * 
+   * @param pos int
+   * @return value store at pos
+   */
+  inline otawa::hard::Cache::block_t getValue(int pos) {
+    ASSERTP(pos >= 0 && pos < size, "In State.getValue() : argument 'pos', index out of bound.");
+    return state[pos]; 
+    }
+
+
+  /**
    * @fn equals
    * Tests the equality between this state and a given state
    * 
@@ -57,17 +77,11 @@ class State {
    */
   bool equals(State* state2);
 
-  inline otawa::hard::Cache::block_t getValue(int pos) {
-    ASSERTP(pos >= 0 && pos < size, "In State.getValue() : argument 'pos', index out of bound.");
-    return state[pos]; 
-    }
-
   friend elm::io::Output &operator<<(elm::io::Output &output, const State &state);
 
 private:
   int size;
   otawa::hard::Cache::block_t* state;
-
 };
 
 
@@ -117,6 +131,15 @@ class SaveState {
    */
   void add(State *newState, int set);
 
+
+  /**
+   * @fn contains 
+   * Checks wether or not the given State exists in
+   * the stored States of the given set
+   * 
+   * @param newState the State to check the existence of
+   * @param set the set to check
+   */
   bool contains(State *newState, int set);
 
   /**
@@ -220,7 +243,7 @@ public:
   /**
    * @fn updatePLRU
    * Updates the current cache state with a new cache block according
-   * to the PseudoLRU policy
+   * to the PseudoLRU policy : https://en.wikipedia.org/wiki/Pseudo-LRU
    * 
    * Cache blocks are identified by the tag of the address of its
    * first instruction. The user is expected to handle which address
@@ -234,19 +257,27 @@ public:
    */
   void updatePLRU(otawa::address_t toAdd);
 
+  /**
+   * @fn update
+   * Abstracts the use of the correct update method
+   * by selecting it based on the cache's policy
+   * 
+   * @param toAdd instruction address to be added to the cache
+  */
   void update(otawa::address_t toAdd);
 
   /**
    * @fn displayState
    * prints to cout the current state of the cache
   */
-  void displayState();
+  void displayState(elm::io::Output &output = cout);
 
 
+  /**
+   * @fn copy
+   * Returns a copy of the current object
+  */
   virtual CacheState* copy() { return new CacheState(*this); }
-
-  //bool existsIn(otawa::Block* blockCheck);
-  //bool existsIn(otawa::Block* blockCheck, int set);
 
 
   // Various Getters
@@ -259,6 +290,8 @@ public:
   inline otawa::hard::Cache::set_t getSet(otawa::address_t toAdd) {return cache->set(toAdd);}
 
   inline int getNbSets() {return nbSets;}
+
+
   /**
    * @fn getSubState
    * Instantiates a new State object, initialises it and
@@ -274,6 +307,14 @@ public:
     return state[set];
   }
 
+  /**
+   * @fn newSubState
+   * Instantiates a new State object, initialises it by copying
+   * the current State of the specified set and returns it
+   * 
+   * @param set the set of the State to copy
+   * @return a newly instantiated State object
+  */
   State* newSubState(int set);
 
 private:
