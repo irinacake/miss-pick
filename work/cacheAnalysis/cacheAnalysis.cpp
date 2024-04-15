@@ -32,6 +32,9 @@ p::id<SaveState*> SAVED("SAVED");
 
 
 
+
+
+
 void CacheState::updateLRU(otawa::address_t toAdd){
   auto toAddSet = cache->set(toAdd);
   auto toAddTag = cache->block(toAdd);
@@ -301,7 +304,7 @@ void computeAnalysis(CFG *g, CacheState *mycache) {
 
 p::id<bool> MARKSTATS("MARKSTATS", false);
 
-void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysCount) {
+void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysCount, SaveState* totalStates) {
   if (g == nullptr) {
     return;
   }
@@ -309,7 +312,7 @@ void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysC
     if (!MARKSTATS(v)) {
       MARKSTATS(v) = true;
       if(v->isSynth()) {
-        getStats(v->toSynth()->callee(), mins, maxs, moys, bbCount, waysCount);
+        getStats(v->toSynth()->callee(), mins, maxs, moys, bbCount, waysCount, totalStates);
       } else if (v->isBasic()) {
         SaveState* sState = *SAVED(v);
         int* listSizes = sState->getListSizes();
@@ -319,6 +322,9 @@ void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysC
           if (listSizes[i] != 0){
             moys[i] += listSizes[i];
             bbCount[i]++;
+          }
+          for (auto s: sState->getList(i)){
+            totalStates->add(s,i);
           }
         }
       }
@@ -340,7 +346,10 @@ void makeStats(CFG *g, CacheState *mycache, elm::io::Output &output) {
     bbCount[i] = 0;
   }
 
-  getStats(g, mins, maxs, moys, bbCount, waysCount);
+  SaveState* totalStates = new SaveState;
+  totalStates->setCache(mycache->getCache());
+
+  getStats(g, mins, maxs, moys, bbCount, waysCount, totalStates);
 
   output << "\t\t\t\"bb_count\" : [";
   output << bbCount[0];
@@ -370,6 +379,14 @@ void makeStats(CFG *g, CacheState *mycache, elm::io::Output &output) {
   for (int i = 1; i < waysCount; i++){
     moys[i] /= bbCount[i];
     output << "," << moys[i];
+  }
+  output << "],\n";
+
+  output << "\t\t\t\"state_total\" : [";
+  auto totalList = totalStates->getListSizes();
+  output << totalList[0];
+  for (int i = 1; i < waysCount; i++){
+    output << "," << totalList[i];
   }
   output << "]\n";
 }

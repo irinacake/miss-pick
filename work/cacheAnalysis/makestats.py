@@ -19,7 +19,7 @@ for exp in exps:
     new_data['policy'].append(exp['policy'])
     new_data['associativity'].append(exp['associativity'])
     new_data['set_count'].append(exp['set_count'])
-    new_data['exec_time'].append(exp['exec_time'])
+    new_data['exec_time'].append(exp['exec_time']/1000000)
     new_data['bb_count'].append(exp['bb_count'][0])
     new_data['states_avg'].append(statistics.fmean(exp['state_moys']))
     new_data['max_states_avg'].append(statistics.fmean(exp['state_maxs']))

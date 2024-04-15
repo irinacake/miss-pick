@@ -85,6 +85,18 @@ private:
 };
 
 
+// Redefinition of the equivalence between two State* for the
+// List.contains() method
+namespace elm {
+  template<>
+  class Equiv<State *> {
+  public:
+    static inline bool isEqual(State *state1, State *state2) {
+      return state1->equals(state2);
+    }
+  };
+}
+
 
 
 
@@ -148,6 +160,8 @@ class SaveState {
    * @return int*
    */
   int* getListSizes() { return listSizes; }
+
+  const List<State *>& getList(int set) { return saved[set]; }
 
   friend elm::io::Output &operator<<(elm::io::Output &output, const SaveState &saveState);
   

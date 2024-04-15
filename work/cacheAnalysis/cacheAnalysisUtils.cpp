@@ -2,7 +2,7 @@
 
 
 
-void printbits(elm::t::uint64 n, elm::io::Output &output = cout){
+void printbits(elm::t::uint64 n, elm::io::Output &output){
   auto i = 1UL << 7;
   auto pcpt = 1;
   while(i>0){
@@ -46,17 +46,7 @@ elm::io::Output &operator<<(elm::io::Output &output, const State &state) {
   return output;
 }
 
-// Redefinition of the equivalence between two State* for the
-// List.contains() method
-namespace elm {
-  template<>
-  class Equiv<State *> {
-  public:
-    static inline bool isEqual(State *state1, State *state2) {
-      return state1->equals(state2);
-    }
-  };
-}
+
 
 
 
@@ -165,7 +155,7 @@ void CacheState::update(otawa::address_t toAdd){
 }
 
 
-void CacheState::displayState(elm::io::Output &output = cout){
+void CacheState::displayState(elm::io::Output &output){
   for (int i=0; i < nbSets ; i++) {
     output << i << "\t:\t";
     output << *state[i] << endl;

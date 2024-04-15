@@ -51,23 +51,17 @@ for folder in folders:
                         print("./bin/cacheAnalysis " + elf + " "
                               + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml" )
                         run("./bin/cacheAnalysis " + elf + " "
-                                  + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml", 180)
-                        #os.system("./bin/cacheAnalysis " + elf + " "
-                        #          + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml" )
+                                  + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml", 360)
                         
                         print("./bin/cacheAnalysis " + elf + " "
                               + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml" )
                         run("./bin/cacheAnalysis " + elf + " "
-                                  + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml", 180)
-                        #os.system("./bin/cacheAnalysis " + elf + " "
-                        #          + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml" )
+                                  + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml", 360)
                         
                         print("./bin/cacheAnalysis " + elf + " "
                               + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml" )
                         run("./bin/cacheAnalysis " + elf + " "
-                                  + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml",180)
-                        #os.system("./bin/cacheAnalysis " + elf + " "
-                        #          + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml" )
+                                  + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml", 360)
                 print("----------------------------------------------------------")
 
 
