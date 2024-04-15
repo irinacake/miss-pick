@@ -37,4 +37,4 @@ p2.dot
 *.o
 
 
-*.cache/
+*.trace
