@@ -18,7 +18,7 @@ def run(cmd, timeout_sec):
 folders = [Path("tacle-bench/bench/kernel"), Path("tacle-bench/bench/sequential")]
 #folders = []
 
-banned = ["susan", "rosace"]
+banned = ["susan", "rosace", "petrinets"]
 
 
 result = open("results.json",'w')

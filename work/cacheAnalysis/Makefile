@@ -1,7 +1,7 @@
 CXXFLAGS += $(shell otawa-config --cflags) --std=c++11 -g3
 LIBS += $(shell otawa-config --libs --rpath)
 
-OBJS = cacheAnalysisUtils.o cacheAnalysis.o
+OBJS = bin/cacheAnalysisUtils.o bin/cacheAnalysis.o
 
 
 cacheAnalysis: $(OBJS)
@@ -11,11 +11,11 @@ cacheAnalysis: $(OBJS)
 #	@echo "all"
 #	$(CXX) $(CXXFLAGS) -o bin/$@  $(OBJS) $^ $(LIBS) 
 #
-cacheAnalysisUtils.o: cacheAnalysisUtils.cpp cacheAnalysisUtils.hpp
-	$(CXX) $(CXXFLAGS) -c $<
+bin/cacheAnalysisUtils.o: cacheAnalysisUtils.cpp cacheAnalysisUtils.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-cacheAnalysis.o: cacheAnalysis.cpp cacheAnalysisUtils.hpp
-	$(CXX) $(CXXFLAGS) -c $< 
+bin/cacheAnalysis.o: cacheAnalysis.cpp cacheAnalysisUtils.hpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 
 clean:
