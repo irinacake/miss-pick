@@ -190,115 +190,51 @@ class SaveState {
  * 
  * @param icache the otawa::hard::Cache object to encapsulate.
  */
-class CacheState {
+class AbstractCacheState {
 public:
-  CacheState(const otawa::hard::Cache* icache);
-  CacheState(const CacheState& oldCacheState);
+    AbstractCacheState(const otawa::hard::Cache* icache): cache(icache), nbSets(icache->setCount()), nbWays((int)pow(2,icache->wayBits())), logNbWays(icache->wayBits()) { 
+    ASSERTP(logNbWays < 7, "CacheState: cache way limit is 2^6");
+    state.allocate(nbSets);
+    for (int e=0; e < (nbSets); e++) {
+      state[e] = new State(nbWays);
+    } 
+  }
 
-  /**
-   * @fn updateLRU
-   * Updates the current cache state with a new cache block according
-   * to the LRU policy
-   * 
-   * Cache blocks are identified by the tag of the address of its
-   * first instruction. The user is expected to handle which address
-   * to give themselves.
-   * 
-   * This function will determine in which set to add this block based
-   * on the value of the address and the methods provided by the 
-   * encapsulated Cache item.
-   * 
-   * @param toAdd instruction address to be added to the cache
-   */
-  void updateLRU(otawa::address_t toAdd);
-    /**
-     * Algorithm details :
-     * 1. retrieve the set to add the instruction to
-     * 2. retrieve the tag that will represent the cache block
-     * 3. initialise the "found" position to 0
-     * 4. iterate through the corresponding set
-     * 4.1. if the same tag is found, stop iterating
-     * 4.2. otherwise continue until the end of the set
-     * 5. iterate through the corresponding set again in reverse
-     *    while shifting the currently stored tags towards the
-     *    end of the set (increasing their age)
-     * 6. set the first tag of the set (age 0) to the new tag
-     * 
-     * Notes : 
-     * - whether the new tag is already in the cache or not is
-     *   essentially treated in the same way, and the updade is
-     *   already in O(n)
-     * - checking the last entry of the set in unnecessary as it
-     *   will either get evicted or "shifted" back to age 0. Instead
-     *   of manually shifting it, setting the new tag to age 0 
-     *   effectively achieves the same result.
-    */
+  AbstractCacheState(const AbstractCacheState& oldCacheState) :
+    cache(oldCacheState.cache),
+    nbSets(oldCacheState.nbSets),
+    nbWays(oldCacheState.nbWays),
+    logNbWays(oldCacheState.logNbWays),
+    state(oldCacheState.state)
+  {}
 
-  /**
-   * @fn updateFIFO
-   * Updates the current cache state with a new cache block according
-   * to the FIFO policy
-   * 
-   * Cache blocks are identified by the tag of the address of its
-   * first instruction. The user is expected to handle which address
-   * to give themselves.
-   * 
-   * This function will determine in which set to add this block based
-   * on the value of the address and the methods provided by the 
-   * encapsulated Cache item.
-   * 
-   * @param toAdd instruction address to be added to the cache
-   */
-  void updateFIFO(otawa::address_t toAdd);
-    /**
-     * Algorithm details :
-     * 1. retrieve the set to add the instruction to
-     * 2. retrieve the tag that will represent the cache block
-     * 3. initialise the "found" position to 0
-     * 4. iterate through the corresponding set
-     * 4.1. if the same tag is found, stop everything
-     * 4.2. otherwise set the currIndex to the new tag
-     *      and increment it by 1
-    */
+  virtual ~AbstractCacheState() {}
 
-  /**
-   * @fn updatePLRU
-   * Updates the current cache state with a new cache block according
-   * to the PseudoLRU policy : https://en.wikipedia.org/wiki/Pseudo-LRU
-   * 
-   * Cache blocks are identified by the tag of the address of its
-   * first instruction. The user is expected to handle which address
-   * to give themselves.
-   * 
-   * This function will determine in which set to add this block based
-   * on the value of the address and the methods provided by the 
-   * encapsulated Cache item.
-   * 
-   * @param toAdd instruction address to be added to the cache
-   */
-  void updatePLRU(otawa::address_t toAdd);
 
   /**
    * @fn update
-   * Abstracts the use of the correct update method
-   * by selecting it based on the cache's policy
    * 
    * @param toAdd instruction address to be added to the cache
   */
-  void update(otawa::address_t toAdd);
+  virtual void update(otawa::address_t toAdd) = 0;
 
   /**
    * @fn displayState
    * prints to cout the current state of the cache
   */
-  void displayState(elm::io::Output &output = cout);
+  void displayState(elm::io::Output &output = cout) {
+    for (int i=0; i < nbSets ; i++) {
+      output << i << "\t:\t";
+      output << *state[i] << endl;
+    }
+  }
 
 
   /**
    * @fn copy
    * Returns a copy of the current object
   */
-  virtual CacheState* copy() { return new CacheState(*this); }
+  virtual AbstractCacheState* copy() = 0;
 
 
   // Various Getters
@@ -336,17 +272,22 @@ public:
    * @param set the set of the State to copy
    * @return a newly instantiated State object
   */
-  State* newSubState(int set);
+  State* newSubState(int set){
+    State* newState = new State(nbWays);
+    int pos = 0;
+    while (pos < nbWays){ 
+      newState->setValue(pos,state[set]->getValue(pos));
+      pos++;
+    }
+    return newState;
+  }
 
-private:
+protected:
   int nbWays;
   int logNbWays;
   int nbSets;
-  AllocArray<int> currIndexFIFO;
-  AllocArray<elm::t::uint64> accessBitsPLRU;
   AllocArray<State *> state;
   const otawa::hard::Cache* cache;
-
 };
 
 
@@ -365,6 +306,52 @@ protected:
 
 private:
   int exec_time;
-  CacheState* mycache;
+  AbstractCacheState* mycache;
 };
 
+
+class CacheStateLRU: public AbstractCacheState {
+public:
+  CacheStateLRU(const otawa::hard::Cache* icache) : AbstractCacheState(icache) {}
+  CacheStateLRU(const CacheStateLRU& oldCacheState): AbstractCacheState(oldCacheState){}
+
+  void update(otawa::address_t toAdd);
+
+  CacheStateLRU* copy() { return new CacheStateLRU(*this); }
+};
+
+class CacheStateFIFO: public AbstractCacheState {
+public:
+  CacheStateFIFO(const otawa::hard::Cache* icache) : AbstractCacheState(icache) {
+    currIndexFIFO.allocate(nbSets);
+    for (int e=0; e < nbSets; e++) {
+      currIndexFIFO[e] = 0;
+    } 
+  }
+  CacheStateFIFO(const CacheStateFIFO& oldCacheState): currIndexFIFO(oldCacheState.currIndexFIFO), AbstractCacheState(oldCacheState){
+  }
+
+  void update(otawa::address_t toAdd);
+
+  CacheStateFIFO* copy() { return new CacheStateFIFO(*this); }
+private:
+  AllocArray<int> currIndexFIFO;
+};
+
+
+class CacheStatePLRU: public AbstractCacheState {
+public:
+  CacheStatePLRU(const otawa::hard::Cache* icache) : AbstractCacheState(icache) {
+    accessBitsPLRU.allocate(nbSets);
+    for (int e=0; e < nbSets; e++) {
+      accessBitsPLRU[e] = 0;
+    } 
+  }
+  CacheStatePLRU(const CacheStatePLRU& oldCacheState): accessBitsPLRU(oldCacheState.accessBitsPLRU), AbstractCacheState(oldCacheState){}
+
+  void update(otawa::address_t toAdd);
+
+  CacheStatePLRU* copy() { return new CacheStatePLRU(*this); }
+private:
+  AllocArray<elm::t::uint64> accessBitsPLRU;
+};

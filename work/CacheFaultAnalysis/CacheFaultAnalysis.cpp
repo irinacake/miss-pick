@@ -22,15 +22,8 @@
 #include "CacheFaultAnalysisFeature.h"
 
 
-
-
-
-
-
 using namespace elm;
 using namespace otawa;
-
-
 
 
 
@@ -38,133 +31,9 @@ p::id<SaveState*> SAVED("SAVED");
 
 
 
-
-
-
-void CacheState::updateLRU(otawa::address_t toAdd){
-  auto toAddSet = cache->set(toAdd);
-  auto toAddTag = cache->block(toAdd);
-
-  // position variable
-  int pos = 0;
-  
-  // search loop : break before incrementing if the same tag is found
-  while (pos < nbWays - 1){ 
-    if (toAddTag == state[toAddSet]->getValue(pos)) break;
-    pos++;
-  }
-  
-  // reverse loop : overwrite the current tag (pos) with the 
-  // immediately younger tag (pos-1)
-  while (pos > 0){
-    state[toAddSet]->setValue(pos,state[toAddSet]->getValue(pos-1));
-    pos--;
-  }
-
-  // set age 0 with the new tag
-  state[toAddSet]->setValue(pos,toAddTag);
-}
-
-void CacheState::updateFIFO(otawa::address_t toAdd){
-  auto toAddSet = cache->set(toAdd);
-  auto toAddTag = cache->block(toAdd);
-
-  // position variable
-  int pos = 0;
-  bool found = false;
-  
-  // search loop : break before incrementing if the same tag is found
-  while (pos < nbWays && !found){
-    if (toAddTag == state[toAddSet]->getValue(pos)) {
-      found = true;
-      break;
-    }
-    pos++;
-  }
-
-  if (!found) {
-    state[toAddSet]->setValue(currIndexFIFO[toAddSet],toAddTag);
-    currIndexFIFO[toAddSet] = (currIndexFIFO[toAddSet]+1) % nbWays;
-  }
-}
-
-void CacheState::updatePLRU(otawa::address_t toAdd){
-  auto toAddSet = cache->set(toAdd);
-  auto toAddTag = cache->block(toAdd);
-
-  // position variable
-  int pos = 0;
-  bool found = false;
-  
-  // search loop : break before incrementing if the same tag is found
-  while (pos < nbWays && !found){ 
-    if (toAddTag == state[toAddSet]->getValue(pos)) {
-      found = true;
-      break;
-    }
-    pos++;
-  }
-
-  if (found){
-    int i = 0;
-    int look = 0;
-    int bit = 0;
-    while (i < logNbWays) {
-      bit = 1 << (logNbWays-i-1);
-      if ( (pos) & ( 1 << (logNbWays-i-1)) ) { // clear it
-        accessBitsPLRU[toAddSet] = accessBitsPLRU[toAddSet] & ~(1 << look);
-        look += nbWays / (1 << (i+1)) ;
-      } else { // set it
-        accessBitsPLRU[toAddSet] = accessBitsPLRU[toAddSet] | (1 << look);
-        look += 1;
-      }
-      i++;
-    }
-  } else {
-    int look = 0;
-    int access = 0;
-
-    int i = 0;
-    while(i < logNbWays){
-      access <<= 1;
-      if (accessBitsPLRU[toAddSet] & (1 << look)) {
-        access++;
-      }
-
-      accessBitsPLRU[toAddSet] = accessBitsPLRU[toAddSet] ^ (1 << look);
-      if (accessBitsPLRU[toAddSet] & (1 << look)){
-        look += 1;
-      } else {
-        look += nbWays / (1 << (i+1)) ;
-      }
-      i++;
-    }
-  
-    // set new tag at access
-    state[toAddSet]->setValue(access,toAddTag);
-  }
-}
-
-
-State* CacheState::newSubState(int set){
-  State* newState = new State(nbWays);
-  int pos = 0;
-  while (pos < nbWays){ 
-    newState->setValue(pos,state[set]->getValue(pos));
-    pos++;
-  }
-  return newState;
-}
-
-
-
-
-
-
-
 p::id<bool> MARKPRINT("MARKPRINT", false);
 
-void printStates(CFG *g, CacheState *mycache, string indent = "") {
+void printStates(CFG *g, AbstractCacheState *mycache, string indent = "") {
   if (g == nullptr) {
     return;
   }
@@ -185,7 +54,7 @@ void printStates(CFG *g, CacheState *mycache, string indent = "") {
 
 p::id<bool> MARKINIT("MARKINIT", false);
 
-void initState(CFG *g, CacheState *mycache, string indent = "") {
+void initState(CFG *g, AbstractCacheState *mycache, string indent = "") {
   if (g == nullptr) {
     return;
   }
@@ -205,11 +74,11 @@ void initState(CFG *g, CacheState *mycache, string indent = "") {
 
 
 
-void computeAnalysis(CFG *g, CacheState *mycache) {
+void computeAnalysis(CFG *g, AbstractCacheState *mycache) {
   int currSet = 0;
   int currTag = 0;
   
-  Vector<Pair<Block *,CacheState *>> todo;
+  Vector<Pair<Block *,AbstractCacheState *>> todo;
 
   for (int set = 0; set < mycache->getNbSets(); set++) {
 
@@ -339,7 +208,7 @@ void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysC
 }
 
 
-void makeStats(CFG *g, CacheState *mycache, elm::io::Output &output) {
+void makeStats(CFG *g, AbstractCacheState *mycache, elm::io::Output &output) {
   int waysCount = mycache->getCache()->setCount();
   int mins[waysCount];
   int maxs[waysCount];
@@ -423,9 +292,22 @@ void CacheFaultAnalysisProcessor::processAll(WorkSpace *ws) {
   
     auto maincfg = taskCFG();
     auto icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
-    mycache = new CacheState(icache);
-    //CacheState mycache(icache);
 
+    switch (icache->replacementPolicy())
+    {
+    case otawa::hard::Cache::LRU:
+      mycache = new CacheStateLRU(icache);
+      break;
+    case otawa::hard::Cache::FIFO:
+      mycache = new CacheStateFIFO(icache);
+      break;
+    case otawa::hard::Cache::PLRU:
+      mycache = new CacheStatePLRU(icache);
+      break;
+    
+    default:
+      break;
+    }
 
     mySW.start();
 
