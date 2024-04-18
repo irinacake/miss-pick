@@ -49,3 +49,7 @@ Todo ->
 - nombre total d'état : il faut exclure les duplicats mais vérifier tous les saved[]
 
 - gérer le cas de l'explosion de la complexité avec LRU pour petrinets
+
+- compter les miss
+
+- 

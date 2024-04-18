@@ -27,6 +27,8 @@
 
 bin/
 
+build/
+
 tacle-bench/
 
 p1.dot
