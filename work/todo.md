@@ -57,3 +57,5 @@ Todo ->
 - définir un ordre pour l'usage d'arbre à la place de liste : doit prendre en compte les tags mais aussi les index (ex: en fifo)
 
 - ajouter un 3e élément dans le tuple : `LockPtr` qui sert à simuler une pile d'appel / sous-appel. En cas d'arrivée sur SynthBlock : add avec un push, en cas d'arrivée sur un exit() : récupérer avec un pop() 
+
+- --cfg-virtualize sur tous 
