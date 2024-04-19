@@ -326,7 +326,6 @@ void CacheFaultAnalysisProcessor::dump(WorkSpace *ws, Output &out) {
 
   auto icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
 
-  out.flush();
   out << "{\n";
   out << "\t\"file\" : \"" << workspace()->process()->program()->name() << "\",\n";  //get name of the input file
   out << "\t\"task\" : \"" << taskCFG() << "\",\n";
@@ -340,7 +339,6 @@ void CacheFaultAnalysisProcessor::dump(WorkSpace *ws, Output &out) {
 
   makeStats(taskCFG(), mycache, out);
 
-  out << "},\n";
+  out << "}" << endl;
 
-  out.flush();
 }

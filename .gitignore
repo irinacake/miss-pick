@@ -26,8 +26,9 @@
 *.fdb_latexmk
 
 bin/
-
 build/
+data/
+
 
 tacle-bench/
 

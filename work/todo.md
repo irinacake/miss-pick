@@ -22,13 +22,19 @@
 
 
 - timeout exception needs to be handled
+- refractor update classes, heritage (est-ce vraiment nécessaire ?)
+
+- mise en forme à rendre otawa-like
+
+
 
 
 <- Done
 Todo ->
 
+- benchall : traiter le résultat de l'exécution de chaque bench dans le python pour pouvoir réutiliser le même fichier à chaque fois
 
-- refractor update classes, heritage (est-ce vraiment nécessaire ?)
+- mettre un timer dans le cpp et pas dans le python 
 
 - mettre des asserts pour essayer de détecter des erreurs
 
@@ -40,11 +46,7 @@ Todo ->
 
 - analyse initiale supplémentaire : "projection du graphe par ensemble"
 
-- mise en forme à rendre otawa-like
-
 - récupérer des informations sur les échecs de timer (progression ?)
-
-- mettre un timer dans le cpp et pas dans le python 
 
 - nombre total d'état : il faut exclure les duplicats mais vérifier tous les saved[]
 
@@ -52,4 +54,6 @@ Todo ->
 
 - compter les miss
 
-- 
+- définir un ordre pour l'usage d'arbre à la place de liste : doit prendre en compte les tags mais aussi les index (ex: en fifo)
+
+- ajouter un 3e élément dans le tuple : `LockPtr` qui sert à simuler une pile d'appel / sous-appel. En cas d'arrivée sur SynthBlock : add avec un push, en cas d'arrivée sur un exit() : récupérer avec un pop() 
