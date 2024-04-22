@@ -22,7 +22,7 @@ folders = [Path("tacle-bench/bench/kernel"), Path("tacle-bench/bench/sequential"
 
 banned = ["susan", "rosace"]
 execpath = "./build/tester"
-timeout = 600
+timeout = 1200
 
 
 resultdir = "./data/exp" + str(int(time.time())) + "/"
@@ -45,18 +45,18 @@ for folder in folders:
                         subelf = exec['path']
                 elf = os.path.join(subfolder,subelf)
                         
-            else :
+            else:
                 elf = os.path.join(subfolder,os.path.basename(subfolder) + ".elf")
 
             if os.path.basename(subfolder) not in banned :
                 print("\n----------------------------------------------------------")
                 for way in [4,8]:
                     for row in [32,256]:
-                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml --dump-for CacheFaultAnalysisProcessor --dump-to " + resultdir + task['name'] + "_FIFO_" + str(row) + "_" + str(way) + ".json", timeout)
+                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml --dump-for CacheFaultAnalysisProcessor --dump-to " + resultdir + task['name'] + "_FIFO_" + str(row) + "_" + str(way) + ".json --cfg-virtualize", timeout)
 
-                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml --dump-for CacheFaultAnalysisProcessor --dump-to " + resultdir + task['name'] + "_LRU_" + str(row) + "_" + str(way) + ".json", timeout)
+                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml --dump-for CacheFaultAnalysisProcessor --dump-to " + resultdir + task['name'] + "_LRU_" + str(row) + "_" + str(way) + ".json --cfg-virtualize", timeout)
 
-                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml --dump-for CacheFaultAnalysisProcessor --dump-to " + resultdir + task['name'] + "_PLRU_" + str(row) + "_" + str(way) + ".json", timeout)
+                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml --dump-for CacheFaultAnalysisProcessor --dump-to " + resultdir + task['name'] + "_PLRU_" + str(row) + "_" + str(way) + ".json --cfg-virtualize", timeout)
 
                 print("----------------------------------------------------------")
 

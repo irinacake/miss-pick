@@ -26,36 +26,50 @@
 
 - mise en forme à rendre otawa-like
 
+- benchall : traiter le résultat de l'exécution de chaque bench dans le python pour pouvoir réutiliser le même fichier à chaque fois
+
+- nombre total d'état : il faut exclure les duplicats mais vérifier tous les saved[]
+
+- --cfg-virtualize sur tous 
 
 
 
 <- Done
 Todo ->
 
-- benchall : traiter le résultat de l'exécution de chaque bench dans le python pour pouvoir réutiliser le même fichier à chaque fois
 
-- mettre un timer dans le cpp et pas dans le python 
+- travail sur les EXP :
+    - mettre un timer dans le cpp et pas dans le python 
+    - teamviewer la tour pour lancer les EXP ?
 
-- mettre des asserts pour essayer de détecter des erreurs
 
-- faire usage de propriétés pour noter les boucles et les esquiver lors de la working list par ensemble
+- traitement des duplicas : il faut passer des listes aux AVL tree :
+    - définir un ordre pour l'usage d'arbre à la place de liste : doit prendre en compte les tags mais aussi les index (ex: en fifo)
+    - traiter les duplicas de paires (BB,cachestate) dans la liste TODO 
+    - traiter les duplicas de States* 
+    - utiliser `#include <elm/avl/Set.h>`
 
-- traiter les duplicas de paires (BB,cachestate) dans la liste TODO 
 
-- traiter les duplicas de States* 
 
-- analyse initiale supplémentaire : "projection du graphe par ensemble"
 
-- récupérer des informations sur les échecs de timer (progression ?)
 
-- nombre total d'état : il faut exclure les duplicats mais vérifier tous les saved[]
+- WL par ensemble : ne pas ajouter d'état aux BB non concernés par l'ensemble :
+    - faire usage de propriétés pour noter les boucles et les esquiver lors de la working list par ensemble  # obsolète ?
+    - stocker en 3e argument le dernier BB qui a touché à l'ensemble concerné. Il faut vérifier si l'ajout du BB suivant passe par un arc retour, auquel cas on n'ajoute que si le dernier block qui a touché l'ensemble appartient à la boucle courante (= la boucle dont la tête est le BB pointé par l'arc retour)
+    - `extended_loop_feature`
 
-- gérer le cas de l'explosion de la complexité avec LRU pour petrinets
 
-- compter les miss
 
-- définir un ordre pour l'usage d'arbre à la place de liste : doit prendre en compte les tags mais aussi les index (ex: en fifo)
 
-- ajouter un 3e élément dans le tuple : `LockPtr` qui sert à simuler une pile d'appel / sous-appel. En cas d'arrivée sur SynthBlock : add avec un push, en cas d'arrivée sur un exit() : récupérer avec un pop() 
+- autres :
+    - mettre des asserts pour essayer de détecter des erreurs
+    - analyse initiale supplémentaire : "projection du graphe par ensemble"
+    - récupérer des informations sur les échecs de timer (progression ?)
+    - gérer le cas de l'explosion de la complexité avec LRU pour petrinets
+    - compter les miss
 
-- --cfg-virtualize sur tous 
+
+
+
+- Remplace `--cfg-virtualize` :
+    - ajouter un 3e élément dans le tuple : `LockPtr` qui sert à simuler une pile d'appel / sous-appel. En cas d'arrivée sur SynthBlock : add avec un push, en cas d'arrivée sur un exit() : récupérer avec un pop() 

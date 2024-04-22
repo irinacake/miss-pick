@@ -11,6 +11,13 @@ import numpy as np
 new_data = {'bench': [], 'task': [], 'policy': [], 'associativity': [], 'set_count': [], 'exec_time': [], 'bb_count': [], 'states_avg': [], 'max_states': [], 'states_total': []}
 
 
+resultdir = os.path.join("results", sys.argv[1].split('/')[1])
+
+Path(resultdir).mkdir(parents=True, exist_ok=True)
+
+print(resultdir)
+
+
 for jsonfile in sys.argv[1:]:
     try:
         exp = json.load(open(jsonfile, 'r'))
@@ -36,7 +43,7 @@ pd.set_option('display.max_colwidth', None)
 pd.set_option('display.max_rows', None)
 
 
-print(resultats)
+print(resultats)#.sort_values('exec_time'))
 
 resultats = resultats.reset_index()  # make sure indexes pair with number of rows
 
@@ -73,9 +80,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Total States Count / BB Count for FIFO for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Total States Count")
-plt.savefig("TotalStates_FIFO")
-
-
+plt.savefig(resultdir + "/TotalStates_FIFO")
 
 #graph 2:
 # states total for LRU with all 4 configurations
@@ -96,7 +101,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Total States Count / BB Count for LRU for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Total States Count")
-plt.savefig("TotalStates_LRU")
+plt.savefig(resultdir + "/TotalStates_LRU")
 
 
 
@@ -119,7 +124,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Total States Count / BB Count for PLRU for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Total States Count")
-plt.savefig("TotalStates_PLRU")
+plt.savefig(resultdir + "/TotalStates_PLRU")
 
 
 
@@ -143,7 +148,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Moy States Count for a BB / BB Count for FIFO for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Moy States Count")
-plt.savefig("StatesMoy_FIFO")
+plt.savefig(resultdir + "/StatesMoy_FIFO")
 
 
 
@@ -167,7 +172,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Moy States Count for a BB / BB Count for LRU for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Moy States Count")
-plt.savefig("StatesMoy_LRU")
+plt.savefig(resultdir + "/StatesMoy_LRU")
 
 
 
@@ -191,7 +196,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Moy States Count for a BB / BB Count for PLRU for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Moy States Count")
-plt.savefig("StatesMoy_PLRU")
+plt.savefig(resultdir + "/StatesMoy_PLRU")
 
 
 
@@ -216,7 +221,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Max States Count for a BB / BB Count for FIFO for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Max States Count")
-plt.savefig("StatesMax_FIFO")
+plt.savefig(resultdir + "/StatesMax_FIFO")
 
 
 
@@ -240,7 +245,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Max States Count for a BB / BB Count for LRU for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Max States Count")
-plt.savefig("StatesMax_LRU")
+plt.savefig(resultdir + "/StatesMax_LRU")
 
 
 
@@ -264,7 +269,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Max States Count for a BB / BB Count for PLRU for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Max States Count")
-plt.savefig("StatesMax_PLRU")
+plt.savefig(resultdir + "/StatesMax_PLRU")
 
 
 
@@ -287,7 +292,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Exec time / BB Count for FIFO for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Exec Time (s)")
-plt.savefig("ExecTime_FIFO")
+plt.savefig(resultdir + "/ExecTime_FIFO")
 
 
 
@@ -310,7 +315,7 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Exec time / BB Count for LRU for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Exec Time (s)")
-plt.savefig("ExecTime_LRU")
+plt.savefig(resultdir + "/ExecTime_LRU")
 
 
 
@@ -335,4 +340,4 @@ plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='up
 plt.title("Exec time / BB Count for PLRU for every configuration")
 plt.xlabel("BB Count")
 plt.ylabel("Exec Time (s)")
-plt.savefig("ExecTime_PLRU")
+plt.savefig(resultdir + "/ExecTime_PLRU")
