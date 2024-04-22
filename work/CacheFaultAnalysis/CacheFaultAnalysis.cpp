@@ -5,6 +5,7 @@
 #include <elm/sys/StopWatch.h>
 #include <elm/options.h>
 #include <elm/sys/FileItem.h>
+#include <elm/sys/System.h>
 
 #include <otawa/proc/Processor.h>
 #include <otawa/prog/Manager.h>
@@ -74,12 +75,13 @@ void initState(CFG *g, AbstractCacheState *mycache, string indent = "") {
 
 
 
-void computeAnalysis(CFG *g, AbstractCacheState *mycache) {
+void computeAnalysis(CFG *g, AbstractCacheState *mycache, sys::StopWatch& mySW) {
   int currSet = 0;
   int currTag = 0;
   
   Vector<Pair<Block *,AbstractCacheState *>> todo;
 
+  int i = 0;
   for (int set = 0; set < mycache->getNbSets(); set++) {
 
     DEBUG("computing new set : " << set << endl);
@@ -89,6 +91,14 @@ void computeAnalysis(CFG *g, AbstractCacheState *mycache) {
 
     
     while (!todo.isEmpty()){
+      i++;
+      if (i%1000000 == 0){
+        //cout << "set : " << set << endl;
+        if (mySW.currentDelay().mins() > 30){
+          sys::System::exit(10000 + set);
+        }
+      }
+
       auto curPair = todo.pop();
       auto curBlock = curPair.fst;
       auto curCacheState = curPair.snd;
@@ -106,6 +116,9 @@ void computeAnalysis(CFG *g, AbstractCacheState *mycache) {
             todo.add(pair(sink,curCacheState->copy()));
           }
         }
+
+        delete(curCacheState);
+      
       } else if(curBlock->isExit()) {
         DEBUG("is Exit block:" << endl);
         for (auto caller: curBlock->cfg()->callers()){
@@ -117,6 +130,8 @@ void computeAnalysis(CFG *g, AbstractCacheState *mycache) {
             }
           }
         }
+        
+        delete(curCacheState);
 
       } else if(curBlock->isSynth()) {
         DEBUG("is Synth block:" << endl);
@@ -132,6 +147,7 @@ void computeAnalysis(CFG *g, AbstractCacheState *mycache) {
               todo.add(pair(sink,curCacheState->copy()));
             }
           }
+          delete(curCacheState);
         }
 
       } else if (curBlock->isBasic()) {
@@ -169,6 +185,7 @@ void computeAnalysis(CFG *g, AbstractCacheState *mycache) {
             todo.add(pair(sink,curCacheState->copy()));
           }
         }
+        delete(curCacheState);
       }
     }
   }
@@ -289,35 +306,34 @@ p::declare CacheFaultAnalysisProcessor::reg = p::init("CacheFaultAnalysisProcess
 void CacheFaultAnalysisProcessor::processAll(WorkSpace *ws) {  
 	sys::StopWatch mySW;
 	
+  auto maincfg = taskCFG();
+  auto icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
+
+  switch (icache->replacementPolicy())
+  {
+  case otawa::hard::Cache::LRU:
+    mycache = new CacheStateLRU(icache);
+    break;
+  case otawa::hard::Cache::FIFO:
+    mycache = new CacheStateFIFO(icache);
+    break;
+  case otawa::hard::Cache::PLRU:
+    mycache = new CacheStatePLRU(icache);
+    break;
   
-    auto maincfg = taskCFG();
-    auto icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
+  default:
+    break;
+  }
 
-    switch (icache->replacementPolicy())
-    {
-    case otawa::hard::Cache::LRU:
-      mycache = new CacheStateLRU(icache);
-      break;
-    case otawa::hard::Cache::FIFO:
-      mycache = new CacheStateFIFO(icache);
-      break;
-    case otawa::hard::Cache::PLRU:
-      mycache = new CacheStatePLRU(icache);
-      break;
-    
-    default:
-      break;
-    }
+  mySW.start();
 
-    mySW.start();
+  initState(maincfg, mycache);
+  computeAnalysis(maincfg, mycache, mySW);
 
-    initState(maincfg, mycache);
-    computeAnalysis(maincfg, mycache);
-
-    mySW.stop();
+  mySW.stop();
 
 
-    exec_time = mySW.delay().micros();
+  exec_time = mySW.delay().micros();
 
 }
 

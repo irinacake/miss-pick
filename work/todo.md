@@ -41,6 +41,7 @@ Todo ->
 - travail sur les EXP :
     - mettre un timer dans le cpp et pas dans le python 
     - teamviewer la tour pour lancer les EXP ?
+    - insérer les méthodes de travail dans la classe
 
 
 - traitement des duplicas : il faut passer des listes aux AVL tree :
@@ -73,3 +74,7 @@ Todo ->
 
 - Remplace `--cfg-virtualize` :
     - ajouter un 3e élément dans le tuple : `LockPtr` qui sert à simuler une pile d'appel / sous-appel. En cas d'arrivée sur SynthBlock : add avec un push, en cas d'arrivée sur un exit() : récupérer avec un pop() 
+
+
+
+- il faudra free les savestates à la fin de l'analyse pour ne conserver que les résultats (pas sûr... à voir)

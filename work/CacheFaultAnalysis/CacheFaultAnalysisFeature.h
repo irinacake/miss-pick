@@ -42,6 +42,18 @@ class State {
   public:
   State(int isize);
 
+  State(State& oldState){
+    state = new otawa::hard::Cache::block_t[size];
+    size = oldState.size;
+    int pos = 0;
+    while (pos < size){ 
+      state[pos] = oldState.state[pos];
+      pos++;
+    }
+  }
+
+  ~State() {delete[]state;}
+
   /**
    * @fn getState
    * @return otawa::hard::Cache::block_t* state
@@ -129,6 +141,15 @@ class SaveState {
   public:
   SaveState();
 
+  ~SaveState(){
+    for (int i=0; i<size; i++){
+      for (int j=0; j<listSizes[i]; j++){
+        delete(saved[i][j]);
+      }
+    }
+    delete[]listSizes;
+  }
+
   /**
    * @fn setCache
    * Initiliases the private attributes required by the class
@@ -200,15 +221,25 @@ public:
     } 
   }
 
-  AbstractCacheState(const AbstractCacheState& oldCacheState) :
-    cache(oldCacheState.cache),
-    nbSets(oldCacheState.nbSets),
-    nbWays(oldCacheState.nbWays),
-    logNbWays(oldCacheState.logNbWays),
-    state(oldCacheState.state)
-  {}
+  AbstractCacheState(const AbstractCacheState& oldCacheState) : cache(oldCacheState.cache)
+  {
+    nbSets = oldCacheState.nbSets;
+    nbWays = oldCacheState.nbWays;
+    logNbWays = oldCacheState.logNbWays;
 
-  virtual ~AbstractCacheState() {}
+    state.allocate(nbSets);
+    for (int e=0; e < (nbSets); e++) {
+      state[e] = new State(*oldCacheState.state[e]);
+    } 
+
+    
+  }
+
+  virtual ~AbstractCacheState() {
+    for (auto s: state){
+      delete(s);
+    }
+  }
 
 
   /**
@@ -287,7 +318,7 @@ protected:
   int logNbWays;
   int nbSets;
   AllocArray<State *> state;
-  const otawa::hard::Cache* cache;
+  const otawa::hard::Cache* cache; // not owned by this class
 };
 
 
@@ -315,9 +346,9 @@ public:
   CacheStateLRU(const otawa::hard::Cache* icache) : AbstractCacheState(icache) {}
   CacheStateLRU(const CacheStateLRU& oldCacheState): AbstractCacheState(oldCacheState){}
 
-  void update(otawa::address_t toAdd);
+  void update(otawa::address_t toAdd) override;
 
-  CacheStateLRU* copy() { return new CacheStateLRU(*this); }
+  AbstractCacheState* copy() override { return new CacheStateLRU(*this); }
 };
 
 class CacheStateFIFO: public AbstractCacheState {
@@ -328,12 +359,17 @@ public:
       currIndexFIFO[e] = 0;
     } 
   }
-  CacheStateFIFO(const CacheStateFIFO& oldCacheState): currIndexFIFO(oldCacheState.currIndexFIFO), AbstractCacheState(oldCacheState){
+  CacheStateFIFO(const CacheStateFIFO& oldCacheState): AbstractCacheState(oldCacheState)
+  {
+    currIndexFIFO.allocate(nbSets);
+    for (int e=0; e < nbSets; e++) {
+      currIndexFIFO[e] = oldCacheState.currIndexFIFO[e];
+    }
   }
 
-  void update(otawa::address_t toAdd);
+  void update(otawa::address_t toAdd) override;
 
-  CacheStateFIFO* copy() { return new CacheStateFIFO(*this); }
+  AbstractCacheState* copy() override { return new CacheStateFIFO(*this); }
 private:
   AllocArray<int> currIndexFIFO;
 };
@@ -347,11 +383,17 @@ public:
       accessBitsPLRU[e] = 0;
     } 
   }
-  CacheStatePLRU(const CacheStatePLRU& oldCacheState): accessBitsPLRU(oldCacheState.accessBitsPLRU), AbstractCacheState(oldCacheState){}
+  CacheStatePLRU(const CacheStatePLRU& oldCacheState): AbstractCacheState(oldCacheState)
+  {
+    accessBitsPLRU.allocate(nbSets);
+    for (int e=0; e < nbSets; e++) {
+      accessBitsPLRU[e] = oldCacheState.accessBitsPLRU[e];
+    } 
+  }
 
-  void update(otawa::address_t toAdd);
+  void update(otawa::address_t toAdd) override;
 
-  CacheStatePLRU* copy() { return new CacheStatePLRU(*this); }
+  AbstractCacheState* copy() override { return new CacheStatePLRU(*this); }
 private:
   AllocArray<elm::t::uint64> accessBitsPLRU;
 };
