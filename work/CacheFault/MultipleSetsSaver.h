@@ -9,7 +9,6 @@
 #include <otawa/otawa.h>
 #include <otawa/hard/CacheConfiguration.h>
 
-#include "CacheSet.h"
 
 using namespace elm;
 using namespace otawa;

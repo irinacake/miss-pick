@@ -29,6 +29,8 @@ public:
 protected:
   void processTask(const CFGCollection& coll, PropList &props) override {
 
+
+    
     otawa::CACHE_CONFIG_PATH(props) = *cacheXml;
 
     require(DECODED_TEXT);
@@ -40,6 +42,9 @@ protected:
     auto icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
     
 
+    // must be called
+    CacheSetState::initAssociativity(icache->wayCount());
+
 
 
     auto msSaver = new MultipleSetsSaver();
@@ -47,7 +52,8 @@ protected:
 
     cout << "setcount, waycount : " << msSaver->getSetCount() << ", " << msSaver->getWayCount() << endl;
 
-    auto s = new CacheSet(5);
+
+    auto s = new CacheSetState();
 
     s->setStateValue(0,1);
     s->setStateValue(1,2);

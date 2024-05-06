@@ -6,7 +6,7 @@
 #include <otawa/otawa.h>
 #include <otawa/hard/CacheConfiguration.h>
 
-#include "CacheSet.h"
+#include "CacheSetState.h"
 
 using namespace elm;
 using namespace otawa;
@@ -27,31 +27,30 @@ public:
     CacheSetsSaver(const CacheSetsSaver& other){ // Copy Constructor
         cacheSetCount = other.cacheSetCount;
         for (auto cs: other.savedCacheSets){
-            add(new CacheSet(*cs));
+            add(cs);
         }
     }
 
     CacheSetsSaver& operator=(const CacheSetsSaver& other){ // Copy assignment
-        if (this != &other)
+        if (this == &other)
             return *this;
-        for (auto cs: savedCacheSets){
-            delete(cs);
-        }
+        savedCacheSets.clear();
+
         cacheSetCount = other.cacheSetCount;
         for (auto cs: other.savedCacheSets){
-            add(new CacheSet(*cs));
+            add(cs);
         }
         return *this;
     }
 
-    void add(CacheSet *newState) {
-        if (!(savedCacheSets.contains(newState))){
+    void add(CacheSetState *stateToAdd) {
+        if (!(savedCacheSets.contains(stateToAdd))){
             cacheSetCount++;
-            savedCacheSets.add(newState);
+            savedCacheSets.add(new CacheSetState(*stateToAdd));
         }
     }
 
-    inline List<CacheSet *> getSavedCacheSets(){ // Iteratable
+    inline List<CacheSetState*> getSavedCacheSets(){ // Iteratable
         return savedCacheSets;
     }
     inline int getCacheSetCount(){
@@ -64,7 +63,7 @@ public:
 
 private:
     int cacheSetCount;
-    List<CacheSet *> savedCacheSets;
+    List<CacheSetState*> savedCacheSets;
 };
 
 
