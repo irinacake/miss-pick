@@ -1,6 +1,8 @@
-#ifndef OTAWA_CACHEFAULT_MULTIPLESETSSAVER_H
-#define OTAWA_CACHEFAULT_MULTIPLESETSSAVER_H
+#ifndef OTAWA_CACHEFAULT_MULTIPLE_SETS_SAVER_H
+#define OTAWA_CACHEFAULT_MULTIPLE_SETS_SAVER_H
 
+
+#include "CacheFaultDebug.h"
 #include "CacheSetsSaver.h"
 
 
@@ -49,6 +51,28 @@ public:
     }
 
 
+    bool contains(CacheSetState *stateToCheck, int set){
+        if ((savedSavers[set].contains(stateToCheck))){
+            return true;
+        } 
+        return false;
+    }
+
+    void add(CacheSetState *newState, int set) {
+        ASSERTP(set >= 0 && set < setCount, "In CacheSetState.add() : argument 'set', index out of bound.");
+        if (!(savedSavers[set].contains(newState))){
+            DEBUG("Adding new state" << endl);
+            savedSavers[set].add(newState);
+        } else {
+            DEBUG("not Adding new state" << endl);
+        }
+    }
+
+    CacheSetsSaver getSaver(int set) {
+        ASSERTP(set >= 0 && set < setCount, "In CacheSetState.add() : argument 'set', index out of bound.");
+        return savedSavers[set];
+    }
+
 
     friend elm::io::Output &operator<<(elm::io::Output &output, const MultipleSetsSaver &msSaver);
 
@@ -60,4 +84,4 @@ private:
 
 
 
-#endif // OTAWA_CACHEFAULT_MULTIPLESETSSAVER_H
+#endif // OTAWA_CACHEFAULT_MULTIPLE_SETS_SAVER_H

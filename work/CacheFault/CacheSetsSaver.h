@@ -1,11 +1,12 @@
-#ifndef OTAWA_CACHEFAULT_CACHESETSSAVER_H
-#define OTAWA_CACHEFAULT_CACHESETSSAVER_H
+#ifndef OTAWA_CACHEFAULT_CACHE_SETS_SAVER_H
+#define OTAWA_CACHEFAULT_CACHE_SETS_SAVER_H
 
 
 #include <elm/io.h>
 #include <otawa/otawa.h>
 #include <otawa/hard/CacheConfiguration.h>
 
+#include "CacheFaultDebug.h"
 #include "CacheSetState.h"
 
 using namespace elm;
@@ -46,7 +47,7 @@ public:
     void add(CacheSetState *stateToAdd) {
         if (!(savedCacheSets.contains(stateToAdd))){
             cacheSetCount++;
-            savedCacheSets.add(new CacheSetState(*stateToAdd));
+            savedCacheSets.add(stateToAdd->clone());
         }
     }
 
@@ -55,6 +56,13 @@ public:
     }
     inline int getCacheSetCount(){
         return cacheSetCount;
+    }
+
+    bool contains(CacheSetState *stateToCheck){
+        if ((savedCacheSets.contains(stateToCheck))){
+            return true;
+        } 
+        return false;
     }
 
 
@@ -68,4 +76,4 @@ private:
 
 
 
-#endif // OTAWA_CACHEFAULT_CACHESETSSAVER_H
+#endif // OTAWA_CACHEFAULT_CACHE_SETS_SAVER_H

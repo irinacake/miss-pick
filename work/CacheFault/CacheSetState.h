@@ -1,9 +1,11 @@
-#ifndef OTAWA_CACHEFAULT_CACHESET_H
-#define OTAWA_CACHEFAULT_CACHESET_H
-
+#ifndef OTAWA_CACHEFAULT_CACHE_SET_H
+#define OTAWA_CACHEFAULT_CACHE_SET_H
 
 #include <elm/io.h>
 #include <otawa/otawa.h>
+
+#include "CacheFaultDebug.h"
+
 
 using namespace elm;
 using namespace otawa;
@@ -62,10 +64,14 @@ public:
     /**
      * @fn initAssociativity
      * this method must be called first
+     * 
+     * @param associativityBits is the number of bits used
+     * for the associativity and not the associativity itself
     */
-    static inline void initAssociativity(int associativityValue){
+    static inline void initAssociativity(int associativityBits){
         if (!isInit){
-            associativity = associativityValue;
+            logAssociativity = associativityBits;
+            associativity = pow(associativityBits,2);
             isInit = true;
         }
     }
@@ -74,12 +80,19 @@ public:
 
     bool equals(CacheSetState& other);
 
+    virtual void update(int toAddTag) = 0;
+
+    virtual CacheSetState* clone() = 0;
+
     friend elm::io::Output &operator<<(elm::io::Output &output, const CacheSetState &state);
 
 private:
-    static int associativity;
     static bool isInit;
+    
+protected:
     int* savedState;
+    static int associativity;
+    static int logAssociativity;
 };
 
 
@@ -111,12 +124,19 @@ public:
         CacheSetState::operator=(other);
         return *this;
     }
+
+    void update(int toAddTag) override;
+
+    CacheSetState* clone() override;
 };
+
+
+
+
 
 
 class CacheSetStateFIFO: public CacheSetState {
 public:
-    int index;
 
     CacheSetStateFIFO(): CacheSetState(), index(0) {}
 
@@ -130,12 +150,24 @@ public:
         index = other.index;
         return *this;
     }
+
+    void update(int toAddTag) override;
+
+    CacheSetState* clone() override;
+
+private:
+    int index;
 };
+
+
+
+
+
+
 
 
 class CacheSetStatePLRU: public CacheSetState {
 public:
-    t::uint64 accessBits;
 
     CacheSetStatePLRU(): CacheSetState(), accessBits(0) {}
 
@@ -149,6 +181,13 @@ public:
         accessBits = other.accessBits;
         return *this;
     }
+
+    void update(int toAddTag) override;
+
+    CacheSetState* clone() override;
+
+private:
+    t::uint64 accessBits;
 };
 
 
@@ -169,8 +208,7 @@ public:
 
 
 
-
-#endif // OTAWA_CACHEFAULT_CACHESET_H
+#endif // OTAWA_CACHEFAULT_CACHE_SET_H
 
 
 
