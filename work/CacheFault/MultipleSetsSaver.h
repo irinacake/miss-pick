@@ -68,9 +68,9 @@ public:
         }
     }
 
-    CacheSetsSaver getSaver(int set) {
+    CacheSetsSaver* getSaver(int set) {
         ASSERTP(set >= 0 && set < setCount, "In CacheSetState.add() : argument 'set', index out of bound.");
-        return savedSavers[set];
+        return &savedSavers[set];
     }
 
 

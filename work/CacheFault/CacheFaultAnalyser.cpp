@@ -83,7 +83,7 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
 
             DEBUG("\nTodo: " << curBlock << endl);
             DEBUG("Initial State :" << endl);
-            DEBUG(curCacheSetState)
+            DEBUG(curCacheSetState);
 
             if (curBlock->isEntry()) {
                 DEBUG("is Entry block:" << endl);
@@ -184,26 +184,27 @@ void CacheFaultAnalysisProcessor::getStats(CFG *g, int *mins, int *maxs, float *
     return;
     }
     for(auto v: *g){
-    if (!MARKSTATS(v)) {
-        MARKSTATS(v) = true;
-        if(v->isSynth()) {
-            getStats(v->toSynth()->callee(), mins, maxs, moys, bbCount, waysCount, totalStates);
-        } else if (v->isBasic()) {
-            MultipleSetsSaver* sState = *SAVED(v);
-            int* listSizes = sState->getSaversSizes();
-            for (int i = 0; i < waysCount; i++){
-                mins[i] = min(mins[i],listSizes[i]);
-                maxs[i] = max(maxs[i],listSizes[i]);
-                if (listSizes[i] != 0){
-                    moys[i] += listSizes[i];
-                    bbCount[i]++;
-                }
-                for (auto s: sState->getSaver(i).getSavedCacheSets()){
-                    totalStates->add(s,i);
+        if (!MARKSTATS(v)) {
+            MARKSTATS(v) = true;
+            if(v->isSynth()) {
+                getStats(v->toSynth()->callee(), mins, maxs, moys, bbCount, waysCount, totalStates);
+            } else if (v->isBasic()) {
+                MultipleSetsSaver* sState = *SAVED(v);
+                int* listSizes = sState->getSaversSizes();
+                
+                for (int i = 0; i < waysCount; i++){
+                    mins[i] = min(mins[i],listSizes[i]);
+                    maxs[i] = max(maxs[i],listSizes[i]);
+                    if (listSizes[i] != 0){
+                        moys[i] += listSizes[i];
+                        bbCount[i]++;
+                    }
+                    for (auto* s: *sState->getSaver(i)->getSavedCacheSets()){
+                        totalStates->add(s,i);
+                    }
                 }
             }
         }
-    }
     }
 }
 
@@ -320,6 +321,8 @@ void CacheFaultAnalysisProcessor::processAll(WorkSpace *ws) {
 
     initState(maincfg);
     computeAnalysis(maincfg, mycache, mySW);
+
+    //printStates();
 
 
 

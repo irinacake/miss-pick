@@ -51,8 +51,8 @@ public:
         }
     }
 
-    inline List<CacheSetState*> getSavedCacheSets(){ // Iteratable
-        return savedCacheSets;
+    inline List<CacheSetState*>* getSavedCacheSets(){ // Iteratable
+        return &savedCacheSets;
     }
     inline int getCacheSetCount(){
         return cacheSetCount;
