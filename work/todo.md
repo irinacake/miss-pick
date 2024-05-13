@@ -71,10 +71,26 @@ Todo ->
 
 
 
-
 - Remplace `--cfg-virtualize` :
     - ajouter un 3e élément dans le tuple : `LockPtr` qui sert à simuler une pile d'appel / sous-appel. En cas d'arrivée sur SynthBlock : add avec un push, en cas d'arrivée sur un exit() : récupérer avec un pop() 
 
 
 
 - il faudra free les savestates à la fin de l'analyse pour ne conserver que les résultats (pas sûr... à voir)
+
+
+
+
+Todo, ordre de priorité :
+- Mettre en place la simulation de la pile 
+
+- récupérer le nombre de miss "par l-block" :
+ - v1: un bitset pour chaque l-block : quand un l-block A vire un l-block B, le l-block A doit aller mettre à 1 le bit lui correspondant dans le bitset du l-block B (utiliser des bitvectors)
+ - v2: par interprétation abstraite
+- support de Top "T" : indique l'indéfini. Au départ l'ensemble du cache est rempli avec "T", ce qui signifie que les premières updates génèrent plus de 1 ensemble
+
+- StateSaver : stockage des SetState par AVL Tree
+- Mêmoïsation : chaque CacheState est unique et référencé dans une SDD globale, afin d'empêcher la création de duplicas
+- Projection de graphe : un graphe par ensemble à traiter
+
+- usage du bottom (⊥)
