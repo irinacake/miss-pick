@@ -1,14 +1,8 @@
 #include "CacheFaultFeature.h"
-
+#include <elm/rtti/Tuple.h>
 
 
 p::id<MultipleSetsSaver*> SAVED("SAVED");
-
-
-
-
-
-p::id<bool> MARKPRINT("MARKPRINT", false);
 
 
 void CacheFaultAnalysisProcessor::printStates() {
@@ -22,30 +16,15 @@ void CacheFaultAnalysisProcessor::printStates() {
 }
 
 
-
-
-
-
-p::id<bool> MARKINIT("MARKINIT", false);
-
-void CacheFaultAnalysisProcessor::initState(CFG *g, string indent) {
-  if (g == nullptr) {
-    return;
-  }
-  for(auto v: *g){
-    if (!MARKINIT(v)){
-      MARKINIT(v) = true;
-      if(v->isSynth()) {
-        initState(v->toSynth()->callee(), indent + "\t");
-      } else if (v->isBasic()) {
-        MultipleSetsSaver* newSetsSaver = new MultipleSetsSaver;
-        newSetsSaver->setupMWS(icache->setCount(),icache->wayCount());
-        SAVED(v) = newSetsSaver;
-      }
+void CacheFaultAnalysisProcessor::initState() {
+    for(auto v: cfgs().blocks()){
+        if(v->isBasic()) {
+            MultipleSetsSaver* newSetsSaver = new MultipleSetsSaver;
+            newSetsSaver->setupMWS(icache->setCount(),icache->wayCount());
+            SAVED(v) = newSetsSaver;
+        }
     }
-  }
 }
-
 
 
 
@@ -174,34 +153,21 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
 
 
 
-
-
-
-p::id<bool> MARKSTATS("MARKSTATS", false);
-
-void CacheFaultAnalysisProcessor::getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates) {
-    if (g == nullptr) {
-    return;
-    }
-    for(auto v: *g){
-        if (!MARKSTATS(v)) {
-            MARKSTATS(v) = true;
-            if(v->isSynth()) {
-                getStats(v->toSynth()->callee(), mins, maxs, moys, bbCount, waysCount, totalStates);
-            } else if (v->isBasic()) {
-                MultipleSetsSaver* sState = *SAVED(v);
-                int* listSizes = sState->getSaversSizes();
-                
-                for (int i = 0; i < waysCount; i++){
-                    mins[i] = min(mins[i],listSizes[i]);
-                    maxs[i] = max(maxs[i],listSizes[i]);
-                    if (listSizes[i] != 0){
-                        moys[i] += listSizes[i];
-                        bbCount[i]++;
-                    }
-                    for (auto* s: *sState->getSaver(i)->getSavedCacheSets()){
-                        totalStates->add(s,i);
-                    }
+void CacheFaultAnalysisProcessor::getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates) {
+    for(auto v: cfgs().blocks()){
+        if(v->isBasic()) {
+            MultipleSetsSaver* sState = *SAVED(v);
+            int* listSizes = sState->getSaversSizes();
+            
+            for (int i = 0; i < waysCount; i++){
+                mins[i] = min(mins[i],listSizes[i]);
+                maxs[i] = max(maxs[i],listSizes[i]);
+                if (listSizes[i] != 0){
+                    moys[i] += listSizes[i];
+                    bbCount[i]++;
+                }
+                for (auto* s: *sState->getSaver(i)->getSavedCacheSets()){
+                    totalStates->add(s,i);
                 }
             }
         }
@@ -209,7 +175,8 @@ void CacheFaultAnalysisProcessor::getStats(CFG *g, int *mins, int *maxs, float *
 }
 
 
-void CacheFaultAnalysisProcessor::makeStats(CFG *g, elm::io::Output &output) {
+
+void CacheFaultAnalysisProcessor::makeStats(elm::io::Output &output) {
     int waysCount = icache->setCount();
     int mins[waysCount];
     int maxs[waysCount];
@@ -225,7 +192,7 @@ void CacheFaultAnalysisProcessor::makeStats(CFG *g, elm::io::Output &output) {
     MultipleSetsSaver* totalStates = new MultipleSetsSaver;
     totalStates->setupMWS(icache->setCount(),icache->wayCount());
 
-    getStats(g, mins, maxs, moys, bbCount, waysCount, totalStates);
+    getStats(mins, maxs, moys, bbCount, waysCount, totalStates);
 
     output << "\t\"bb_count\" : [";
     output << bbCount[0];
@@ -271,10 +238,6 @@ void CacheFaultAnalysisProcessor::makeStats(CFG *g, elm::io::Output &output) {
 
 
 
-
-
-
-
 p::feature CACHE_FAULT_ANALYSIS_FEATURE("otawa::hard::CACHE_FAULT_ANALYSIS_FEATURE", p::make<CacheFaultAnalysisProcessor>());
 
 
@@ -283,12 +246,12 @@ CacheFaultAnalysisProcessor::CacheFaultAnalysisProcessor(): CFGProcessor(reg) {
 }
 
 p::declare CacheFaultAnalysisProcessor::reg = p::init("CacheFaultAnalysisProcessor", Version(1, 0, 0))
-	.make<CacheFaultAnalysisProcessor>()
-	.extend<CFGProcessor>()
-	.provide(CACHE_FAULT_ANALYSIS_FEATURE)
-	.require(DECODED_TEXT)
-  .require(COLLECTED_CFG_FEATURE)
-  .require(otawa::hard::CACHE_CONFIGURATION_FEATURE);
+    .make<CacheFaultAnalysisProcessor>()
+    .extend<CFGProcessor>()
+    .provide(CACHE_FAULT_ANALYSIS_FEATURE)
+    .require(DECODED_TEXT)
+    .require(COLLECTED_CFG_FEATURE)
+    .require(otawa::hard::CACHE_CONFIGURATION_FEATURE);
 
 
 void CacheFaultAnalysisProcessor::processAll(WorkSpace *ws) {  
@@ -319,13 +282,10 @@ void CacheFaultAnalysisProcessor::processAll(WorkSpace *ws) {
     }
 
 
-    initState(maincfg);
+    initState();
     computeAnalysis(maincfg, mycache, mySW);
 
     //printStates();
-
-
-
 
 
     mySW.stop();
@@ -334,6 +294,7 @@ void CacheFaultAnalysisProcessor::processAll(WorkSpace *ws) {
     exec_time = mySW.delay().micros();
 
 }
+
 
 
 void CacheFaultAnalysisProcessor::dump(WorkSpace *ws, Output &out) {
@@ -351,7 +312,7 @@ void CacheFaultAnalysisProcessor::dump(WorkSpace *ws, Output &out) {
 
   out << "\t\"exec_time\" : " << exec_time << ",\n";
 
-  makeStats(taskCFG(), out);
+  makeStats(out);
 
   out << "}" << endl;
 

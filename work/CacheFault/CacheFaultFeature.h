@@ -33,12 +33,12 @@ protected:
     void dump(WorkSpace *ws, Output &out) override;
 	//void configure() override;
 
-	void initState(CFG *g, string indent = "");
+	void initState();
 	void printStates();
 	void computeAnalysis(CFG *g, CacheSetState *initState, sys::StopWatch& mySW);
-	void makeStats(CFG *g, elm::io::Output &output);
+	void makeStats(elm::io::Output &output);
 
-	void getStats(CFG *g, int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates);
+	void getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates);
 
 private:
 	int exec_time;
