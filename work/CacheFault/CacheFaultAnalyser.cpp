@@ -1,5 +1,4 @@
 #include "CacheFaultFeature.h"
-#include <elm/rtti/Tuple.h>
 
 
 p::id<MultipleSetsSaver*> SAVED("SAVED");
@@ -32,7 +31,14 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
     int currSet = 0;
     int currTag = 0;
 
-    Vector<Pair<Block *,CacheSetState *>> todo;
+    struct todoItem {
+        Block* block;
+        CacheSetState* cacheSetState;
+        Vector<Block*> callStack;
+    };
+
+    Vector<todoItem> todo;
+    //Vector<Pair<Pair<Block *,CacheSetState *>,Vector<Block *>>> todo;
 
     int i = 0;
     for (int set = 0; set < icache->setCount(); set++) {
@@ -42,7 +48,11 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
 
         //todo.add(pair(g->entry(), initState->copy()));
         // IS this a proper copy ?
-        todo.add(pair(g->entry(), initState->clone()));
+        todoItem initItem;
+        initItem.block = g->entry();
+        initItem.cacheSetState = initState->clone();
+        initItem.callStack = Vector<Block*>();
+        todo.add(initItem);
 
 
 
@@ -56,77 +66,93 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
                 }
             }
 
-            auto curPair = todo.pop();
-            auto curBlock = curPair.fst;
-            auto curCacheSetState = curPair.snd;
+            auto curItem = todo.pop();
 
-            DEBUG("\nTodo: " << curBlock << endl);
+            DEBUG("\nTodo: " << curItem.block << endl);
             DEBUG("Initial State :" << endl);
-            DEBUG(curCacheSetState);
+            DEBUG(curItem.cacheSetState);
 
-            if (curBlock->isEntry()) {
+            if (curItem.block->isEntry()) {
                 DEBUG("is Entry block:" << endl);
-                for (auto e: curBlock->outEdges()){
+                for (auto e: curItem.block->outEdges()){
                     auto sink = e->sink();
-                    if(!sink->isBasic() || !SAVED(sink)->contains(curCacheSetState,set)){
+                    if(!sink->isBasic() || !SAVED(sink)->contains(curItem.cacheSetState,set)){
                         DEBUG("- Adding " << sink << endl);
-                        todo.add(pair(sink,curCacheSetState->clone()));
+                        todoItem itemToAdd;
+                        itemToAdd.block = sink;
+                        itemToAdd.cacheSetState = curItem.cacheSetState->clone();
+                        itemToAdd.callStack = curItem.callStack;
+                        todo.add(itemToAdd);
                     }
                 }
 
-                delete(curCacheSetState);
+                delete(curItem.cacheSetState);
 
-            } else if(curBlock->isExit()) {
+            } else if(curItem.block->isExit()) {
                 DEBUG("is Exit block:" << endl);
-                for (auto caller: curBlock->cfg()->callers()){
+                if (!curItem.callStack.isEmpty()){
+                    auto caller = curItem.callStack.pop();
                     for (auto e: caller->outEdges()){
                         auto sink = e->sink();
-                        if(!sink->isBasic() || !SAVED(sink)->contains(curCacheSetState,set)){
+                        if(!sink->isBasic() || !SAVED(sink)->contains(curItem.cacheSetState,set)){
                             DEBUG("- Adding " << sink << endl);
-                            todo.add(pair(sink,curCacheSetState->clone()));
+                            todoItem itemToAdd;
+                            itemToAdd.block = sink;
+                            itemToAdd.cacheSetState = curItem.cacheSetState->clone();
+                            itemToAdd.callStack = curItem.callStack;
+                            todo.add(itemToAdd);
                         }
                     }
                 }
 
-                delete(curCacheSetState);
+                delete(curItem.cacheSetState);
 
-            } else if(curBlock->isSynth()) {
+            } else if(curItem.block->isSynth()) {
                 DEBUG("is Synth block:" << endl);
-                if ( curBlock->toSynth()->callee() != nullptr ){
-                    DEBUG("- Adding " << curBlock->toSynth()->callee()->entry() << endl);
-                    todo.add(pair(curBlock->toSynth()->callee()->entry(),curCacheSetState));
-                } else {
-                    for (auto e: curBlock->outEdges()){
+                if ( curItem.block->toSynth()->callee() != nullptr ){
+                    DEBUG("- Adding " << curItem.block->toSynth()->callee()->entry() << endl);
+                    todoItem itemToAdd;
+                    itemToAdd.block = curItem.block->toSynth()->callee()->entry();
+                    itemToAdd.cacheSetState = curItem.cacheSetState;
+                    curItem.callStack.push(curItem.block);
+                    itemToAdd.callStack = curItem.callStack;
+                    todo.add(itemToAdd);
+                } else { // L'ajout des todos suivant devrait avoir des TOP partout (undefined behaviour)
+                    for (auto e: curItem.block->outEdges()){
                         auto sink = e->sink();
-                        if(!sink->isBasic() || !SAVED(sink)->contains(curCacheSetState,set)){
+                        if(!sink->isBasic() || !SAVED(sink)->contains(curItem.cacheSetState,set)){
                             DEBUG("- Adding " << sink << endl);
-                            todo.add(pair(sink,curCacheSetState->clone()));
+                            todoItem itemToAdd;
+                            itemToAdd.block = sink;
+                            itemToAdd.cacheSetState = curItem.cacheSetState->clone();
+                            itemToAdd.callStack = curItem.callStack;
+                            todo.add(itemToAdd);
                         }
                     }
-                    delete(curCacheSetState);
+                    delete(curItem.cacheSetState);
                 }
 
-            } else if (curBlock->isBasic()) {
+            } else if (curItem.block->isBasic()) {
                 /// TODO I AM HERE
 
                 currTag = -1;
 
                 DEBUG("is Basic block:" << endl);
-                DEBUG("Before : " << **SAVED(curBlock) << endl);
+                DEBUG("Before : " << **SAVED(curItem.block) << endl);
 
-                CacheSetState* newState = curCacheSetState->clone();
-                SAVED(curBlock)->add(newState, set);
+                CacheSetState* newState = curItem.cacheSetState->clone();
+                SAVED(curItem.block)->add(newState, set);
 
-                DEBUG("After : " << **SAVED(curBlock) << endl);
+                DEBUG("After : " << **SAVED(curItem.block) << endl);
 
-                for (auto inst : *curBlock->toBasic()){
+                for (auto inst : *curItem.block->toBasic()){
                     DEBUG(icache->block(inst->address()) << endl);
                     if (currTag != icache->block(inst->address())){ // TAG
                         DEBUG(" - new tag" << endl;)
                         currTag = icache->block(inst->address());
                         if (set == icache->set(inst->address())){
                             DEBUG("   - matches set" << endl;)
-                            curCacheSetState->update(icache->block(inst->address()));
+                            curItem.cacheSetState->update(icache->block(inst->address()));
                         }
                     }
                 }
@@ -134,15 +160,19 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
                 DEBUG("Final State :" << endl);
                 SPEDEBUG(curCacheState->displayState();)
 
-                for (auto e: curBlock->outEdges()){
+                for (auto e: curItem.block->outEdges()){
                     auto sink = e->sink();
                     DEBUG("Verifying exist (Basic) : " << sink << endl);
-                    if(!sink->isBasic() || !SAVED(sink)->contains(curCacheSetState,set)){
+                    if(!sink->isBasic() || !SAVED(sink)->contains(curItem.cacheSetState,set)){
                         DEBUG("- Adding " << sink << endl);
-                        todo.add(pair(sink,curCacheSetState->clone()));
+                        todoItem itemToAdd;
+                        itemToAdd.block = sink;
+                        itemToAdd.cacheSetState = curItem.cacheSetState->clone();
+                        itemToAdd.callStack = curItem.callStack;
+                        todo.add(itemToAdd);
                     }
                 }
-                delete(curCacheSetState);
+                delete(curItem.cacheSetState);
             }
         }
     }
