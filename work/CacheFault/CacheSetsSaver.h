@@ -59,7 +59,7 @@ public:
         return &savedCacheSets;
     }
     inline int getCacheSetCount(){
-        return cacheSetCount;
+        return savedCacheSets.count();
     }
 
     bool contains(CacheSetState *stateToCheck){

@@ -60,12 +60,15 @@ public:
 
     void add(CacheSetState *newState, int set) {
         ASSERTP(set >= 0 && set < setCount, "In CacheSetState.add() : argument 'set', index out of bound.");
+        savedSavers[set].add(newState);
+        /*
         if (!(savedSavers[set].contains(newState))){
             DEBUG("Adding new state" << endl);
             savedSavers[set].add(newState);
         } else {
             DEBUG("not Adding new state" << endl);
         }
+        */
     }
 
     CacheSetsSaver* getSaver(int set) {
