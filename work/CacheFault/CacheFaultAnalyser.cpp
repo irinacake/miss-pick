@@ -28,6 +28,8 @@ void CacheFaultAnalysisProcessor::initState() {
 
 
 void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initState, sys::StopWatch& mySW){
+    cout << "computing (v2)" << endl;
+
     int currSet = 0;
     int currTag = 0;
 
@@ -42,6 +44,7 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
 
     int i = 0;
     for (int set = 0; set < icache->setCount(); set++) {
+        cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
 
@@ -175,8 +178,8 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
             }
         }
     }
+    cout << "computing done" << endl;
 }
-
 
 
 

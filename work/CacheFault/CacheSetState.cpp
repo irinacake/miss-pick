@@ -5,14 +5,6 @@ bool CacheSetState::isInit = false;
 int CacheSetState::associativity = 0;
 int CacheSetState::logAssociativity = 0;
 
-bool CacheSetState::equals(CacheSetState& other){
-    for (int i = 0; i < associativity; i++) {
-        if (savedState[i] != other.savedState[i]){
-            return false;
-        }
-    }
-    return true;
-}
 
 elm::io::Output &operator<<(elm::io::Output &output, const CacheSetState &state) {
     // Redefinition of the << operator for the CacheSetState class
@@ -26,10 +18,23 @@ elm::io::Output &operator<<(elm::io::Output &output, const CacheSetState &state)
 
 
 
-void CacheSetStateLRU::update(int toAddTag){
+bool CacheSetStateLRU::equals(CacheSetState& other){
+    auto casterOther = static_cast<CacheSetStateLRU&>(other);
+
+    for (int i = 0; i < associativity; i++) {
+        if (savedState[i] != casterOther.savedState[i]){
+            return false;
+        }
+    }
+    return true;
+}
+
+
+int CacheSetStateLRU::update(int toAddTag){
 
     // position variable
     int pos = 0;
+    int kicked = -1;
 
     // search loop : break before incrementing if the same tag is found
     while (pos < associativity - 1){ 
@@ -37,6 +42,11 @@ void CacheSetStateLRU::update(int toAddTag){
         pos++;
     }
 
+
+    if (pos == associativity - 1) {
+        kicked = savedState[pos];
+    }
+    
     // reverse loop : overwrite the current tag (pos) with the 
     // immediately younger tag (pos-1)
     while (pos > 0){
@@ -48,6 +58,8 @@ void CacheSetStateLRU::update(int toAddTag){
     // set age 0 with the new tag
     //state[toAddSet]->setValue(pos,toAddTag);
     savedState[pos] = toAddTag;
+
+    return kicked;
 }
 
 CacheSetState* CacheSetStateLRU::clone(){
@@ -58,11 +70,23 @@ CacheSetState* CacheSetStateLRU::clone(){
 
 
 
-void CacheSetStateFIFO::update(int toAddTag){
+bool CacheSetStateFIFO::equals(CacheSetState& other){
+    auto casterOther = static_cast<CacheSetStateFIFO&>(other);
+
+    for (int i = 0; i < associativity; i++) {
+        if (savedState[i] != casterOther.savedState[i]){
+            return false;
+        }
+    }
+    return true;
+}
+
+int CacheSetStateFIFO::update(int toAddTag){
 
     // position variable
     int pos = 0;
     bool found = false;
+    int kicked = -1;
 
     // search loop : break before incrementing if the same tag is found
     while (pos < associativity && !found){
@@ -74,9 +98,11 @@ void CacheSetStateFIFO::update(int toAddTag){
     }
 
     if (!found) {
+        kicked = savedState[index];
         savedState[index] = toAddTag;
         index = (index + 1) % associativity;
     }
+    return kicked;
 }
 
 CacheSetState* CacheSetStateFIFO::clone(){
@@ -85,11 +111,24 @@ CacheSetState* CacheSetStateFIFO::clone(){
 
 
 
-void CacheSetStatePLRU::update(int toAddTag){
+
+bool CacheSetStatePLRU::equals(CacheSetState& other){
+    auto casterOther = static_cast<CacheSetStatePLRU&>(other);
+
+    for (int i = 0; i < associativity; i++) {
+        if (savedState[i] != casterOther.savedState[i]){
+            return false;
+        }
+    }
+    return true;
+}
+
+int CacheSetStatePLRU::update(int toAddTag){
 
     // position variable
     int pos = 0;
     bool found = false;
+    int kicked = -1;
 
     // search loop : break before incrementing if the same tag is found
     while (pos < associativity && !found){ 
@@ -101,43 +140,45 @@ void CacheSetStatePLRU::update(int toAddTag){
     }
 
     if (found){
-    int i = 0;
-    int look = 0;
-    int bit = 0;
-    while (i < logAssociativity) {
-        bit = 1 << (logAssociativity-i-1);
-        if ( (pos) & ( 1 << (logAssociativity-i-1)) ) { // clear it
-            accessBits = accessBits & ~(1 << look);
-            look += associativity / (1 << (i+1)) ;
-        } else { // set it
-            accessBits = accessBits | (1 << look);
-            look += 1;
+        int i = 0;
+        int look = 0;
+        int bit = 0;
+        while (i < logAssociativity) {
+            bit = 1 << (logAssociativity-i-1);
+            if ( (pos) & ( 1 << (logAssociativity-i-1)) ) { // clear it
+                accessBits = accessBits & ~(1 << look);
+                look += associativity / (1 << (i+1)) ;
+            } else { // set it
+                accessBits = accessBits | (1 << look);
+                look += 1;
+            }
+            i++;
         }
-        i++;
-    }
     } else {
-    int look = 0;
-    int access = 0;
+        int look = 0;
+        int access = 0;
 
-    int i = 0;
-    while(i < logAssociativity){
-        access <<= 1;
-        if (accessBits & (1 << look)) {
-        access++;
+        int i = 0;
+        while(i < logAssociativity){
+            access <<= 1;
+            if (accessBits & (1 << look)) {
+            access++;
+            }
+
+            accessBits = accessBits ^ (1 << look);
+            if (accessBits & (1 << look)){
+            look += 1;
+            } else {
+            look += associativity / (1 << (i+1)) ;
+            }
+            i++;
         }
 
-        accessBits = accessBits ^ (1 << look);
-        if (accessBits & (1 << look)){
-        look += 1;
-        } else {
-        look += associativity / (1 << (i+1)) ;
-        }
-        i++;
+        // set new tag at access
+        kicked = savedState[access];
+        savedState[access] = toAddTag;
     }
-
-    // set new tag at access
-    savedState[access] = toAddTag;
-    }
+    return kicked;
 }
 
 CacheSetState* CacheSetStatePLRU::clone(){

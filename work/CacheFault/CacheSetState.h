@@ -17,7 +17,7 @@ public:
         ASSERTP(isInit, "initAssociativity has not been called yet");
         savedState = new int[associativity];
         for (int i=0; i<associativity; i++){
-            savedState[i] = 0;
+            savedState[i] = -1;
         }
     }
 
@@ -78,9 +78,9 @@ public:
 
 
 
-    bool equals(CacheSetState& other);
+    virtual bool equals(CacheSetState& other) = 0;
 
-    virtual void update(int toAddTag) = 0;
+    virtual int update(int toAddTag) = 0;
 
     virtual CacheSetState* clone() = 0;
 
@@ -125,7 +125,9 @@ public:
         return *this;
     }
 
-    void update(int toAddTag) override;
+    bool equals(CacheSetState& other) override;
+
+    int update(int toAddTag) override;
 
     CacheSetState* clone() override;
 };
@@ -151,7 +153,9 @@ public:
         return *this;
     }
 
-    void update(int toAddTag) override;
+    bool equals(CacheSetState& other) override;
+
+    int update(int toAddTag) override;
 
     CacheSetState* clone() override;
 
@@ -182,7 +186,9 @@ public:
         return *this;
     }
 
-    void update(int toAddTag) override;
+    bool equals(CacheSetState& other) override;
+
+    int update(int toAddTag) override;
 
     CacheSetState* clone() override;
 
