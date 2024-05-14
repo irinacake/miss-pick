@@ -84,6 +84,9 @@ public:
 
     virtual CacheSetState* clone() = 0;
 
+    virtual int compare(const CacheSetState& other) const = 0;
+
+
     friend elm::io::Output &operator<<(elm::io::Output &output, const CacheSetState &state);
 
 private:
@@ -109,6 +112,17 @@ namespace elm {
 
 
 
+class CacheSetStateComparator {
+    public:
+    int doCompare(const CacheSetState *object1, const CacheSetState *object2) {
+        return object1->compare(*object2);
+    }
+    static int compare(const CacheSetState *object1, const CacheSetState *object2) {
+        return object1->compare(*object2);
+    }
+};
+
+
 
 
 class CacheSetStateLRU: public CacheSetState {
@@ -130,6 +144,8 @@ public:
     int update(int toAddTag) override;
 
     CacheSetState* clone() override;
+
+    int compare(const CacheSetState& other) const override;
 };
 
 
@@ -159,6 +175,7 @@ public:
 
     CacheSetState* clone() override;
 
+    int compare(const CacheSetState& other) const override;
 private:
     int index;
 };
@@ -192,6 +209,7 @@ public:
 
     CacheSetState* clone() override;
 
+    int compare(const CacheSetState& other) const override;
 private:
     t::uint64 accessBits;
 };

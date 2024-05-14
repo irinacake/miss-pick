@@ -36,6 +36,7 @@ protected:
 	void initState();
 	void printStates();
 	void computeAnalysis(CFG *g, CacheSetState *initState, sys::StopWatch& mySW);
+	void computeAnalysisHeapless(CFG *g, CacheSetState *initState, sys::StopWatch& mySW);
 	void makeStats(elm::io::Output &output);
 
 	void getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates);

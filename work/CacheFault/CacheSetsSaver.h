@@ -5,6 +5,7 @@
 #include <elm/io.h>
 #include <otawa/otawa.h>
 #include <otawa/hard/CacheConfiguration.h>
+#include <elm/avl/Set.h>
 
 #include "CacheFaultDebug.h"
 #include "CacheSetState.h"
@@ -45,13 +46,16 @@ public:
     }
 
     void add(CacheSetState *stateToAdd) {
+        savedCacheSets.insert(stateToAdd->clone());
+        /*
         if (!(savedCacheSets.contains(stateToAdd))){
             cacheSetCount++;
             savedCacheSets.add(stateToAdd->clone());
         }
+        */
     }
 
-    inline List<CacheSetState*>* getSavedCacheSets(){ // Iteratable
+    inline avl::Set<CacheSetState*,CacheSetStateComparator>* getSavedCacheSets(){ // Iteratable
         return &savedCacheSets;
     }
     inline int getCacheSetCount(){
@@ -71,7 +75,7 @@ public:
 
 private:
     int cacheSetCount;
-    List<CacheSetState*> savedCacheSets;
+    avl::Set<CacheSetState*,CacheSetStateComparator> savedCacheSets;
 };
 
 

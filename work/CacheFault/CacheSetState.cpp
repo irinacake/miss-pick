@@ -19,10 +19,10 @@ elm::io::Output &operator<<(elm::io::Output &output, const CacheSetState &state)
 
 
 bool CacheSetStateLRU::equals(CacheSetState& other){
-    auto casterOther = static_cast<CacheSetStateLRU&>(other);
+    auto castedOther = static_cast<CacheSetStateLRU&>(other);
 
     for (int i = 0; i < associativity; i++) {
-        if (savedState[i] != casterOther.savedState[i]){
+        if (savedState[i] != castedOther.savedState[i]){
             return false;
         }
     }
@@ -46,7 +46,7 @@ int CacheSetStateLRU::update(int toAddTag){
     if (pos == associativity - 1) {
         kicked = savedState[pos];
     }
-    
+
     // reverse loop : overwrite the current tag (pos) with the 
     // immediately younger tag (pos-1)
     while (pos > 0){
@@ -66,15 +66,28 @@ CacheSetState* CacheSetStateLRU::clone(){
     return new CacheSetStateLRU(*this);
 }
 
+int CacheSetStateLRU::compare(const CacheSetState& other) const {
+    auto castedOther = static_cast<const CacheSetStateLRU&>(other);
+
+    int i = 0;
+    while (savedState[i] == castedOther.savedState[i] && i < associativity-1) {
+        i++;
+    }
+    return savedState[i] - castedOther.savedState[i];
+}
+
+
 
 
 
 
 bool CacheSetStateFIFO::equals(CacheSetState& other){
-    auto casterOther = static_cast<CacheSetStateFIFO&>(other);
-
+    auto castedOther = static_cast<CacheSetStateFIFO&>(other);
+    if (index != castedOther.index) {
+        return false;
+    }
     for (int i = 0; i < associativity; i++) {
-        if (savedState[i] != casterOther.savedState[i]){
+        if (savedState[i] != castedOther.savedState[i]){
             return false;
         }
     }
@@ -109,14 +122,30 @@ CacheSetState* CacheSetStateFIFO::clone(){
     return new CacheSetStateFIFO(*this);
 }
 
+int CacheSetStateFIFO::compare(const CacheSetState& other) const {
+    auto castedOther = static_cast<const CacheSetStateFIFO&>(other);
+
+    int i = 0;
+    while (savedState[i] == castedOther.savedState[i] && i < associativity-1) {
+        i++;
+    }
+    if (savedState[i] == castedOther.savedState[i]){
+        return index - castedOther.index;
+    } else {
+        return savedState[i] - castedOther.savedState[i];
+    }
+}
+
 
 
 
 bool CacheSetStatePLRU::equals(CacheSetState& other){
-    auto casterOther = static_cast<CacheSetStatePLRU&>(other);
-
+    auto castedOther = static_cast<CacheSetStatePLRU&>(other);
+    if (accessBits != castedOther.accessBits) {
+        return false;
+    }
     for (int i = 0; i < associativity; i++) {
-        if (savedState[i] != casterOther.savedState[i]){
+        if (savedState[i] != castedOther.savedState[i]){
             return false;
         }
     }
@@ -185,3 +214,18 @@ CacheSetState* CacheSetStatePLRU::clone(){
     return new CacheSetStatePLRU(*this);
 }
 
+
+int CacheSetStatePLRU::compare(const CacheSetState& other) const {
+    auto castedOther = static_cast<const CacheSetStatePLRU&>(other);
+
+    int i = 0;
+    while (savedState[i] == castedOther.savedState[i] && i < associativity-1) {
+        i++;
+    }
+    if (savedState[i] == castedOther.savedState[i]){
+        return accessBits - castedOther.accessBits;
+    } else {
+        return savedState[i] - castedOther.savedState[i];
+    }
+    
+}
