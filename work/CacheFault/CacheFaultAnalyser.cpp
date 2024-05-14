@@ -42,7 +42,6 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
 
     int i = 0;
     for (int set = 0; set < icache->setCount(); set++) {
-
         DEBUG("computing new set : " << set << endl);
 
 
@@ -59,7 +58,7 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
 
         while (!todo.isEmpty()){
             i++;
-            if (i%1000000 == 0){
+            if (i%1000000 == 0){ // timeout
                 //cout << "set : " << set << endl;
                 if (mySW.currentDelay().mins() > 30){
                     sys::System::exit(10000 + set);
