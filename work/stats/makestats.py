@@ -8,7 +8,7 @@ import matplotlib.lines as mlines
 import numpy as np
 
 
-new_data = {'bench': [], 'task': [], 'policy': [], 'associativity': [], 'set_count': [], 'exec_time': [], 'bb_count': [], 'states_avg': [], 'max_states': [], 'states_total': []}
+new_data = {'bench': [], 'task': [], 'policy': [], 'asc': [], 'set_count': [], 'exec_time': [], 'exit': [], 'bb_count': [], 'total_bb': [], 'states_avg': [], 'max_states': [], 'states_total': []}
 
 
 resultdir = os.path.join("results", sys.argv[1].split('/')[1])
@@ -24,10 +24,12 @@ for jsonfile in sys.argv[1:]:
         new_data['bench'].append(os.path.basename(exp['file']))
         new_data['task'].append(exp['task'])
         new_data['policy'].append(exp['policy'])
-        new_data['associativity'].append(exp['associativity'])
+        new_data['asc'].append(exp['associativity'])
         new_data['set_count'].append(exp['set_count'])
         new_data['exec_time'].append(exp['exec_time']/1000000)
+        new_data['exit'].append(0)#.append(exp['exit_value'])
         new_data['bb_count'].append(exp['bb_count'][0])
+        new_data['total_bb'].append(0)#.append(exp['total_bb'])
         new_data['states_avg'].append(statistics.fmean(exp['state_moys']))
         new_data['max_states'].append(max(exp['state_maxs']))
         new_data['states_total'].append(round(sum(exp['state_total'])))
@@ -66,7 +68,7 @@ magenta_cross = mlines.Line2D([], [], color='m', marker='x', linestyle='None',
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "FIFO":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['states_total'],'b^')
             else:
@@ -87,7 +89,7 @@ plt.savefig(resultdir + "/TotalStates_FIFO")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "LRU":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['states_total'],'b^')
             else:
@@ -110,7 +112,7 @@ plt.savefig(resultdir + "/TotalStates_LRU")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "PLRU":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['states_total'],'b^')
             else:
@@ -134,7 +136,7 @@ plt.savefig(resultdir + "/TotalStates_PLRU")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "FIFO":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['states_avg'],'b^')
             else:
@@ -158,7 +160,7 @@ plt.savefig(resultdir + "/StatesMoy_FIFO")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "LRU":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['states_avg'],'b^')
             else:
@@ -182,7 +184,7 @@ plt.savefig(resultdir + "/StatesMoy_LRU")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "PLRU":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['states_avg'],'b^')
             else:
@@ -207,7 +209,7 @@ plt.savefig(resultdir + "/StatesMoy_PLRU")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "FIFO":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['max_states'],'b^')
             else:
@@ -231,7 +233,7 @@ plt.savefig(resultdir + "/StatesMax_FIFO")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "LRU":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['max_states'],'b^')
             else:
@@ -255,7 +257,7 @@ plt.savefig(resultdir + "/StatesMax_LRU")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "PLRU":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['max_states'],'b^')
             else:
@@ -278,7 +280,7 @@ plt.savefig(resultdir + "/StatesMax_PLRU")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "FIFO":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['exec_time'],'b^')
             else:
@@ -301,7 +303,7 @@ plt.savefig(resultdir + "/ExecTime_FIFO")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "LRU":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['exec_time'],'b^')
             else:
@@ -326,7 +328,7 @@ plt.savefig(resultdir + "/ExecTime_LRU")
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "PLRU":
-        if row['associativity'] == 4:
+        if row['asc'] == 4:
             if row['set_count'] == 32:
                 plt.plot(row['bb_count'],row['exec_time'],'b^')
             else:

@@ -83,7 +83,7 @@ void computeAnalysis(CFG *g, AbstractCacheState *mycache, sys::StopWatch& mySW) 
 
   int i = 0;
   for (int set = 0; set < mycache->getNbSets(); set++) {
-
+    cout << "computing new set : " << set << endl;
     DEBUG("computing new set : " << set << endl);
 
 

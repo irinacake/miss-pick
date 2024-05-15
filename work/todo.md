@@ -82,7 +82,7 @@ Todo ->
 
 
 Todo, ordre de priorité :
-- Mettre en place la simulation de la pile 
+- Mettre en place la simulation de la pile  (DONE)
 
 - récupérer le nombre de miss "par l-block" :
  - v1: un bitset pour chaque l-block : quand un l-block A vire un l-block B, le l-block A doit aller mettre à 1 le bit lui correspondant dans le bitset du l-block B (utiliser des bitvectors)
