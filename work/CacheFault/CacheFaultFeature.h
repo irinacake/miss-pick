@@ -45,6 +45,7 @@ private:
 	int exec_time;
 	CacheSetState* mycache;
 	const otawa::hard::Cache* icache;
+	int exit_value;
 };
 
 

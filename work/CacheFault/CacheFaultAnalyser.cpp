@@ -53,6 +53,7 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
 
     int i = 0;
     for (int set = 0; set < icache->setCount(); set++) {
+        cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
         todoItem initItem;
@@ -66,10 +67,9 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
 
         while (!todo.isEmpty()){
             i++;
-            if (i%1000000 == 0){ // timeout
-                if (mySW.currentDelay().mins() > 30){
-                    sys::System::exit(10000 + set);
-                }
+            if (i%1000000 == 0 && mySW.currentDelay().mins() > 30){
+                exit_value = 1 + set;
+                break;
             }
 
             auto curItem = todo.pop();
@@ -192,12 +192,13 @@ void CacheFaultAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initSta
                 }
 
                 delete(curItem.cacheSetState);
-
+            } else if (curItem.block->isUnknown()) {
             } else {
                 ASSERTP(false,"Unexpected block type");
             }
         }
     }
+    exit_value = 0;
 }
 
 
@@ -384,6 +385,10 @@ void CacheFaultAnalysisProcessor::makeStats(elm::io::Output &output) {
     }
     output << "],\n";
 
+    output << "\t\"total_bb\" : [";
+    output << cfgs().count();
+    output << "],\n";
+
 
     output << "\t\"state_mins\" : [";
     output << mins[0];
@@ -494,6 +499,7 @@ void CacheFaultAnalysisProcessor::dump(WorkSpace *ws, Output &out) {
     out << "\t\"set_count\" : " << icache->setCount() << ",\n";
 
     out << "\t\"exec_time\" : " << exec_time << ",\n";
+    out << "\t\"exit_value\" : " << exit_value << ",\n";
 
     makeStats(out);
 
