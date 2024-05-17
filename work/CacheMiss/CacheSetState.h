@@ -1,10 +1,10 @@
-#ifndef OTAWA_CACHEFAULT_CACHE_SET_H
-#define OTAWA_CACHEFAULT_CACHE_SET_H
+#ifndef OTAWA_CACHEMISS_CACHE_SET_H
+#define OTAWA_CACHEMISS_CACHE_SET_H
 
 #include <elm/io.h>
 #include <otawa/otawa.h>
 
-#include "CacheFaultDebug.h"
+#include "CacheMissDebug.h"
 
 
 using namespace elm;
@@ -232,7 +232,7 @@ private:
 
 
 
-#endif // OTAWA_CACHEFAULT_CACHE_SET_H
+#endif // OTAWA_CACHEMISS_CACHE_SET_H
 
 
 

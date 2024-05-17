@@ -1,8 +1,8 @@
-#ifndef OTAWA_CACHEFAULT_MULTIPLE_SETS_SAVER_H
-#define OTAWA_CACHEFAULT_MULTIPLE_SETS_SAVER_H
+#ifndef OTAWA_CACHEMISS_MULTIPLE_SETS_SAVER_H
+#define OTAWA_CACHEMISS_MULTIPLE_SETS_SAVER_H
 
 
-#include "CacheFaultDebug.h"
+#include "CacheMissDebug.h"
 #include "CacheSetsSaver.h"
 
 
@@ -87,4 +87,4 @@ private:
 
 
 
-#endif // OTAWA_CACHEFAULT_MULTIPLE_SETS_SAVER_H
+#endif // OTAWA_CACHEMISS_MULTIPLE_SETS_SAVER_H

@@ -4,7 +4,7 @@
 #include <otawa/app/CFGApplication.h>
 
 
-#include "CacheFaultFeature.h"
+#include "CacheMissFeature.h"
 
 
 
@@ -32,7 +32,7 @@ protected:
 
     
 
-    require(CACHE_FAULT_ANALYSIS_FEATURE);
+    require(CACHE_MISS_ANALYSIS_FEATURE);
     
   }
 

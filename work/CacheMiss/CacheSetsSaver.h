@@ -1,5 +1,5 @@
-#ifndef OTAWA_CACHEFAULT_CACHE_SETS_SAVER_H
-#define OTAWA_CACHEFAULT_CACHE_SETS_SAVER_H
+#ifndef OTAWA_CACHEMISS_CACHE_SETS_SAVER_H
+#define OTAWA_CACHEMISS_CACHE_SETS_SAVER_H
 
 
 #include <elm/io.h>
@@ -7,7 +7,7 @@
 #include <otawa/hard/CacheConfiguration.h>
 #include <elm/avl/Set.h>
 
-#include "CacheFaultDebug.h"
+#include "CacheMissDebug.h"
 #include "CacheSetState.h"
 
 using namespace elm;
@@ -80,4 +80,4 @@ private:
 
 
 
-#endif // OTAWA_CACHEFAULT_CACHE_SETS_SAVER_H
+#endif // OTAWA_CACHEMISS_CACHE_SETS_SAVER_H

@@ -1,6 +1,6 @@
 
-#ifndef OTAWA_CACHEFAULT_CACHE_FAULT_FEATURE_H
-#define OTAWA_CACHEFAULT_CACHE_FAULT_FEATURE_H
+#ifndef OTAWA_CACHEMISS_CACHE_MISS_FEATURE_H
+#define OTAWA_CACHEMISS_CACHE_MISS_FEATURE_H
 
 
 #include <otawa/prog/TextDecoder.h>
@@ -10,7 +10,7 @@
 #include "CacheSetState.h"
 #include "CacheSetsSaver.h"
 #include "MultipleSetsSaver.h"
-#include "CacheFaultDebug.h"
+#include "CacheMissDebug.h"
 
 
 
@@ -19,13 +19,13 @@ using namespace otawa;
 
 
 
-extern p::feature CACHE_FAULT_ANALYSIS_FEATURE;
+extern p::feature CACHE_MISS_ANALYSIS_FEATURE;
 
 
-class CacheFaultAnalysisProcessor: public CFGProcessor {
+class CacheMissAnalysisProcessor: public CFGProcessor {
 public:
 	static p::declare reg;
-	CacheFaultAnalysisProcessor();
+	CacheMissAnalysisProcessor();
 
 protected:
 	void processAll(WorkSpace *ws) override;
@@ -49,4 +49,4 @@ private:
 };
 
 
-#endif // OTAWA_CACHEFAULT_CACHEFAULTFEATURE_H
+#endif // OTAWA_CACHEMISS_CACHEMISSFEATURE_H
