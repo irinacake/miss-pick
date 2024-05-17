@@ -14,10 +14,51 @@ using namespace elm;
 using namespace otawa;
 
 
+class BBP {
+public:
+	BBP () {
+
+	}
+	bool toSynth();
+private:
+	List<int> tags;
+	List<BBP> outEdges;
+	Block* oldBB;
+};
+
+
+class CFGP {
+public:
+	CFGP() {
+
+	}
+private:
+	AllocArray<BBP> BBPs;
+	CFG* oldCFG;
+};
+
+
+class CFGCollectionP {
+public:
+	CFGCollectionP() {
+
+	}
+	void add(CFGP& cfgp){
+		CFGPs.add(cfgp);
+	}
+private:
+	List<CFGP&> CFGPs;
+};
+
+
 class ProjectedCFGColl {
 public:
-	virtual int getGraph(int set) = 0;
+	virtual CFGCollectionP& getGraph(int set) = 0;
 };
+
+
+
+
 
 extern p::interfaced_feature<ProjectedCFGColl> CFG_SET_PROJECTOR_FEATURE;
 
@@ -34,8 +75,8 @@ public:
 	}
 
 
-	int getGraph(int set) override {
-		return 0;
+	CFGCollectionP& getGraph(int set) override {
+		return cfgsP[set];
 	}
 
 
@@ -50,6 +91,10 @@ protected:
 private:
 	int exec_time;
 	int exit_value;
+
+
+	AllocArray<CFGCollectionP> cfgsP;
+
 };
 
 
