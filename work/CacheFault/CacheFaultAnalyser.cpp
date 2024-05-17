@@ -1,5 +1,6 @@
 #include "CacheFaultFeature.h"
-
+#include "CFGSetProjector.h"
+#include <otawa/cfg/Loop.h>
 
 
 p::id<MultipleSetsSaver*> SAVED("SAVED");
@@ -439,7 +440,9 @@ p::declare CacheFaultAnalysisProcessor::reg = p::init("CacheFaultAnalysisProcess
     .provide(CACHE_FAULT_ANALYSIS_FEATURE)
     .require(DECODED_TEXT)
     .require(COLLECTED_CFG_FEATURE)
-    .require(otawa::hard::CACHE_CONFIGURATION_FEATURE);
+    .require(otawa::hard::CACHE_CONFIGURATION_FEATURE)
+    .require(EXTENDED_LOOP_FEATURE)
+    .require(CFG_SET_PROJECTOR_FEATURE);
 
 
 void CacheFaultAnalysisProcessor::processAll(WorkSpace *ws) {  
@@ -447,6 +450,20 @@ void CacheFaultAnalysisProcessor::processAll(WorkSpace *ws) {
 	
     auto maincfg = taskCFG();
     icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
+
+
+
+
+
+    auto a = CFG_SET_PROJECTOR_FEATURE.get(workspace());
+
+    cout << a << endl;
+    a->getGraph(3);
+
+
+
+
+
 
 
     mySW.start();
