@@ -19,13 +19,13 @@ using namespace otawa;
 
 
 
-extern p::feature CACHE_MISS_ANALYSIS_FEATURE;
+extern p::feature CACHE_MISS_FEATURE;
 
 
-class CacheMissAnalysisProcessor: public CFGProcessor {
+class CacheMissProcessor: public CFGProcessor {
 public:
 	static p::declare reg;
-	CacheMissAnalysisProcessor();
+	CacheMissProcessor();
 
 protected:
 	void processAll(WorkSpace *ws) override;

@@ -32,7 +32,7 @@ protected:
 
     
 
-    require(CACHE_MISS_ANALYSIS_FEATURE);
+    require(CACHE_MISS_FEATURE);
     
   }
 

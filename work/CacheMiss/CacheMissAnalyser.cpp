@@ -6,7 +6,7 @@
 p::id<MultipleSetsSaver*> SAVED("SAVED");
 
 
-void CacheMissAnalysisProcessor::printStates() {
+void CacheMissProcessor::printStates() {
     for(auto v: cfgs().blocks()){
         if(v->isSynth()) {
             cout << v << endl;
@@ -17,7 +17,7 @@ void CacheMissAnalysisProcessor::printStates() {
 }
 
 
-void CacheMissAnalysisProcessor::initState() {
+void CacheMissProcessor::initState() {
     for(auto v: cfgs().blocks()){
         if(v->isBasic()) {
             MultipleSetsSaver* newSetsSaver = new MultipleSetsSaver;
@@ -40,7 +40,7 @@ public:
 };
 
 
-void CacheMissAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initState, sys::StopWatch& mySW){
+void CacheMissProcessor::computeAnalysis(CFG *g, CacheSetState *initState, sys::StopWatch& mySW){
     int currSet = 0;
     int currTag = 0;
 
@@ -203,7 +203,7 @@ void CacheMissAnalysisProcessor::computeAnalysis(CFG *g, CacheSetState *initStat
 }
 
 
-void CacheMissAnalysisProcessor::computeAnalysisHeapless(CFG *g, CacheSetState *initState, sys::StopWatch& mySW){
+void CacheMissProcessor::computeAnalysisHeapless(CFG *g, CacheSetState *initState, sys::StopWatch& mySW){
     int currSet = 0;
     int currTag = 0;
 
@@ -338,7 +338,7 @@ void CacheMissAnalysisProcessor::computeAnalysisHeapless(CFG *g, CacheSetState *
 
 
 
-void CacheMissAnalysisProcessor::getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates) {
+void CacheMissProcessor::getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates) {
     for(auto v: cfgs().blocks()){
         if(v->isBasic()) {
             MultipleSetsSaver* sState = *SAVED(v);
@@ -361,7 +361,7 @@ void CacheMissAnalysisProcessor::getStats(int *mins, int *maxs, float *moys, int
 
 
 
-void CacheMissAnalysisProcessor::makeStats(elm::io::Output &output) {
+void CacheMissProcessor::makeStats(elm::io::Output &output) {
     int waysCount = icache->setCount();
     int mins[waysCount];
     int maxs[waysCount];
@@ -427,17 +427,17 @@ void CacheMissAnalysisProcessor::makeStats(elm::io::Output &output) {
 
 
 
-p::feature CACHE_MISS_ANALYSIS_FEATURE("otawa::hard::CACHE_MISS_ANALYSIS_FEATURE", p::make<CacheMissAnalysisProcessor>());
+p::feature CACHE_MISS_FEATURE("otawa::hard::CACHE_MISS_FEATURE", p::make<CacheMissProcessor>());
 
 
-CacheMissAnalysisProcessor::CacheMissAnalysisProcessor(): CFGProcessor(reg) {
+CacheMissProcessor::CacheMissProcessor(): CFGProcessor(reg) {
   
 }
 
-p::declare CacheMissAnalysisProcessor::reg = p::init("CacheMissAnalysisProcessor", Version(1, 0, 0))
-    .make<CacheMissAnalysisProcessor>()
+p::declare CacheMissProcessor::reg = p::init("CacheMissProcessor", Version(1, 0, 0))
+    .make<CacheMissProcessor>()
     .extend<CFGProcessor>()
-    .provide(CACHE_MISS_ANALYSIS_FEATURE)
+    .provide(CACHE_MISS_FEATURE)
     .require(DECODED_TEXT)
     .require(COLLECTED_CFG_FEATURE)
     .require(otawa::hard::CACHE_CONFIGURATION_FEATURE)
@@ -445,7 +445,7 @@ p::declare CacheMissAnalysisProcessor::reg = p::init("CacheMissAnalysisProcessor
     .require(CFG_SET_PROJECTOR_FEATURE);
 
 
-void CacheMissAnalysisProcessor::processAll(WorkSpace *ws) {  
+void CacheMissProcessor::processAll(WorkSpace *ws) {  
 	sys::StopWatch mySW;
 	
     auto maincfg = taskCFG();
@@ -502,7 +502,7 @@ void CacheMissAnalysisProcessor::processAll(WorkSpace *ws) {
 
 
 
-void CacheMissAnalysisProcessor::dump(WorkSpace *ws, Output &out) {
+void CacheMissProcessor::dump(WorkSpace *ws, Output &out) {
 
     auto icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
 
