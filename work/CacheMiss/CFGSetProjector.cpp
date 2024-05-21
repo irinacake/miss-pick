@@ -22,6 +22,9 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
     auto maincfg = taskCFG();
     auto icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
 
+    setCount = icache->setCount();
+    cfgsP.allocate(setCount);
+
 
     cout << "Bonjour has been called" << endl;
 

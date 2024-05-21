@@ -14,27 +14,97 @@ using namespace elm;
 using namespace otawa;
 
 
+class BBP;
+class BBPSynth;
+class CFGP;
+
+
+/**
+ * Projected Block classes
+*/
+
 class BBP {
 public:
-	BBP () {
-
+	BBP (const Block& block): storedOldBB(block) {
 	}
-	bool toSynth();
+
+	inline List<int> tags(void){
+		return storedTags;
+	}
+	inline void addTag(int newTag) {
+		storedTags.add(newTag);
+	}
+
+	inline List<BBP&> outEdges(void){
+		return storedOutEdges;
+	}
+	inline void addOutEdge(BBP& newEdge){
+		storedOutEdges.add(newEdge);
+	}
+
+	inline const Block& oldBB(void){
+		return storedOldBB;
+	}
+
+	inline int index(void) {
+		return storedOldBB.index();
+	}
+
+	inline BBPSynth *toSynth(void);
+	
 private:
-	List<int> tags;
-	List<BBP> outEdges;
-	Block* oldBB;
+	List<int> storedTags;
+	List<BBP&> storedOutEdges;
+	const Block& storedOldBB;
 };
 
 
-class CFGP {
-public:
-	CFGP() {
 
+class BBPSynth: public BBP {
+public:
+	BBPSynth(Block& block, CFGP& toSet): BBP(block), calledCFGP(toSet) {
+	}
+
+	inline CFGP& callee() { 
+		return calledCFGP; 
 	}
 private:
-	AllocArray<BBP> BBPs;
-	CFG* oldCFG;
+	CFGP& calledCFGP;
+};
+
+
+
+// delayed definition
+inline BBPSynth *BBP::toSynth(void) {
+	return static_cast<BBPSynth *>(this);
+}
+
+
+/**
+ * Projected CFG and Collection classes
+*/
+
+class CFGP {
+public:
+	CFGP(const CFG& cfg): storedOldCFG(cfg) {
+		storedBBPs.allocate(cfg.count());
+	}
+
+	inline AllocArray<BBP*>* BBPs(void){
+		return &storedBBPs;
+	}
+	inline void addBBP(BBP* bbp) {
+		storedBBPs[bbp->index()] = bbp;
+		
+	}
+
+	inline const CFG& oldCFG(void) {
+		return storedOldCFG;
+	}
+
+private:
+	AllocArray<BBP*> storedBBPs;
+	const CFG& storedOldCFG;
 };
 
 
@@ -49,6 +119,8 @@ public:
 private:
 	List<CFGP&> CFGPs;
 };
+
+
 
 
 class ProjectedCFGColl {
@@ -76,6 +148,7 @@ public:
 
 
 	CFGCollectionP& getGraph(int set) override {
+		ASSERTP(set > 0 && set < setCount, "set value out of bound");
 		return cfgsP[set];
 	}
 
@@ -86,15 +159,13 @@ protected:
     void dump(WorkSpace *ws, Output &out) override;
 	//void configure() override;
 
-	void initState();
-
 private:
 	int exec_time;
 	int exit_value;
 
 
+	int setCount;
 	AllocArray<CFGCollectionP> cfgsP;
-
 };
 
 
