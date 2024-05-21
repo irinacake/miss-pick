@@ -39,7 +39,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
 
 
     
-    Vector<const CFG *> todoCfg;
+    Vector<CFG *> todoCfg;
     Vector<Pair<BBP *,Block *>> todo;
     p::id<bool> SYNTHCALL("SYNTHCALL");
     for (auto c: *cfgColl) {
@@ -56,12 +56,12 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
 
         while (!todoCfg.isEmpty()){
             auto cfg = todoCfg.pop();
-            auto cfgP = new CFGP(*cfg);
+            auto cfgP = new CFGP(cfg);
 
             cfgsP[currSet].add(cfgP);
 
 
-            auto alpha = new BBP(*cfg->entry());
+            auto alpha = new BBP(cfg->entry());
             cfgP->addBBP(alpha);
 
             for (auto e: cfg->entry()->outEdges()){
@@ -79,19 +79,22 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
                             && Loop::of(bb)->isHeader(bb) ){
                     for (auto e: bb->outEdges()){
                         auto sink = e->sink();
-                        if ( !( e->isReturn() && Loop::of(bb)->equals(Loop::of(&prev->oldBB())) ) ){
+                        if ( !( e->isReturn() && Loop::of(bb)->equals(Loop::of(prev->oldBB())) ) ){
                             todo.add(pair(prev,sink));
                         }
                     }
                 } else {
-                    if (bb->isSynth() && !SYNTHCALL(bb->toSynth()->callee())){
-                        SYNTHCALL(bb->toSynth()->callee()) = true;
+                    //if (bb->isSynth() && !SYNTHCALL(bb->toSynth()->callee())){
+                    //    SYNTHCALL(bb->toSynth()->callee()) = true;
+                    //    todoCfg.add(bb->toSynth()->callee());
+                    //}
+                    if (bb->isSynth() && !cfgsP[currSet].CFGPs().hasKey(bb->toSynth()->callee()) ){
                         todoCfg.add(bb->toSynth()->callee());
                     }
 
                     BBP* bbp;
                     if ((*cfgP->BBPs())[bb->index()] == nullptr) {
-                        bbp = new BBP(*bb);
+                        bbp = new BBP(bb);
                         cfgP->addBBP(bbp);
                     } else {
                         bbp = (*cfgP->BBPs())[bb->index()];

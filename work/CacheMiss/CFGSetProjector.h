@@ -8,6 +8,7 @@
 #include <elm/sys/System.h>
 #include <otawa/prog/TextDecoder.h>
 #include <otawa/hard/CacheConfiguration.h>
+#include <elm/data/ListMap.h>
 
 
 using namespace elm;
@@ -25,56 +26,48 @@ class CFGP;
 
 class BBP {
 public:
-	BBP (Block& oldBB): _oldBB(oldBB) {}
+	BBP (Block* oldBB): _oldBB(oldBB) {}
+
+	class BBPEquiv {
+	public:
+		static inline bool isEqual(BBP *bbp1, BBP *bbp2){
+			return bbp1->equals(*bbp2);
+		}
+	};
 
 	inline List<int> tags(void){ return _tags; }
 	inline void addTag(int newTag) { _tags.add(newTag); }
 
-	inline List<BBP*> outEdges(void){ return _outEdges; }
+	inline List<BBP*,BBPEquiv> outEdges(void){ return _outEdges; }
 	inline void addOutEdge(BBP* newEdge){ _outEdges.add(newEdge); }
 
-	inline Block& oldBB(void){ return _oldBB; }
+	inline Block* oldBB(void){ return _oldBB; }
 
-	inline int index(void) { return _oldBB.index(); }
+	inline int index(void) { return _oldBB->index(); }
 
 	inline BBPSynth *toSynth(void);
 
-	bool equals(BBP& other){
-		return index() == other.index();
-	}
-	
+	inline bool equals(BBP& other){ return _oldBB == other._oldBB; }
+
 private:
 	List<int> _tags;
-	List<BBP*> _outEdges;
-	Block& _oldBB;
+	List<BBP*,BBPEquiv> _outEdges;
+	Block* _oldBB;
 };
-
-namespace elm {
-  template<>
-  class Equiv<BBP *> {
-  public:
-    static inline bool isEqual(BBP *bbp1, BBP *bbp2) {
-      return bbp1->equals(*bbp2);
-    }
-  };
-}
-
-
 
 
 class BBPSynth: public BBP {
 public:
-	BBPSynth(Block& block, const CFGP& callee): BBP(block), _callee(callee) {}
+	BBPSynth(Block* block, const CFGP& callee): BBP(block), _callee(callee) {}
 
 	inline const CFGP& callee() { return _callee; }
 private:
 	const CFGP& _callee;
 };
 
-
-
 // delayed definition
 inline BBPSynth *BBP::toSynth(void) { return static_cast<BBPSynth *>(this); }
+
 
 
 /**
@@ -83,7 +76,7 @@ inline BBPSynth *BBP::toSynth(void) { return static_cast<BBPSynth *>(this); }
 
 class CFGP {
 public:
-	CFGP(const CFG& cfg): _oldCFG(cfg) { _BBPs.allocate(cfg.count()); }
+	CFGP(CFG* cfg): _oldCFG(cfg) { _BBPs.allocate(cfg->count()); }
 	~CFGP(){
 		for (auto bbp: _BBPs)
 			delete(bbp);
@@ -93,11 +86,11 @@ public:
 	inline void addBBP(BBP* bbp) { _BBPs[bbp->index()] = bbp; }
 	inline BBP* entry(void){ return _BBPs[0]; }
 
-	inline const CFG& oldCFG(void) { return _oldCFG; }
+	inline CFG* oldCFG(void) { return _oldCFG; }
 
 private:
 	AllocArray<BBP*> _BBPs;
-	const CFG& _oldCFG;
+	CFG* _oldCFG;
 };
 
 
@@ -109,11 +102,14 @@ public:
             delete(cfgp);
     }
 
-	inline void add(CFGP* cfgp){ _CFGPs.add(cfgp); }
-	inline List<CFGP*> CFGPs(){ return _CFGPs; }
+	inline void add(CFGP* cfgp){
+		_CFGPs.put(cfgp->oldCFG(), cfgp);
+	}
+	//inline void add(CFGP* cfgp){ _CFGPs.add(cfgp); }
+	inline ListMap<CFG*,CFGP*> CFGPs(){ return _CFGPs; }
 
 private:
-	List<CFGP*> _CFGPs;
+	ListMap<CFG*,CFGP*> _CFGPs;
 };
 
 
@@ -164,7 +160,7 @@ private:
 	AllocArray<CFGCollectionP> cfgsP;
 	const CFGCollection* cfgColl;
 	const hard::Cache* icache;
-	const CFG* entryCfg;
+	CFG* entryCfg;
 };
 
 
