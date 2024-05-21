@@ -25,59 +25,41 @@ class CFGP;
 
 class BBP {
 public:
-	BBP (const Block& block): storedOldBB(block) {
-	}
+	BBP (const Block& oldBB): _oldBB(oldBB) {}
 
-	inline List<int> tags(void){
-		return storedTags;
-	}
-	inline void addTag(int newTag) {
-		storedTags.add(newTag);
-	}
+	inline List<int> tags(void){ return _tags; }
+	inline void addTag(int newTag) { _tags.add(newTag); }
 
-	inline List<BBP&> outEdges(void){
-		return storedOutEdges;
-	}
-	inline void addOutEdge(BBP& newEdge){
-		storedOutEdges.add(newEdge);
-	}
+	inline List<BBP&> outEdges(void){ return _outEdges; }
+	inline void addoutEdge(BBP& newEdge){ _outEdges.add(newEdge); }
 
-	inline const Block& oldBB(void){
-		return storedOldBB;
-	}
+	inline const Block& oldBB(void){ return _oldBB; }
 
-	inline int index(void) {
-		return storedOldBB.index();
-	}
+	inline int index(void) { return _oldBB.index(); }
 
 	inline BBPSynth *toSynth(void);
 	
 private:
-	List<int> storedTags;
-	List<BBP&> storedOutEdges;
-	const Block& storedOldBB;
+	List<int> _tags;
+	List<BBP&> _outEdges;
+	const Block& _oldBB;
 };
 
 
 
 class BBPSynth: public BBP {
 public:
-	BBPSynth(Block& block, CFGP& toSet): BBP(block), calledCFGP(toSet) {
-	}
+	BBPSynth(Block& block, const CFGP& callee): BBP(block), _callee(callee) {}
 
-	inline CFGP& callee() { 
-		return calledCFGP; 
-	}
+	inline const CFGP& callee() { return _callee; }
 private:
-	CFGP& calledCFGP;
+	const CFGP& _callee;
 };
 
 
 
 // delayed definition
-inline BBPSynth *BBP::toSynth(void) {
-	return static_cast<BBPSynth *>(this);
-}
+inline BBPSynth *BBP::toSynth(void) { return static_cast<BBPSynth *>(this); }
 
 
 /**
@@ -86,38 +68,37 @@ inline BBPSynth *BBP::toSynth(void) {
 
 class CFGP {
 public:
-	CFGP(const CFG& cfg): storedOldCFG(cfg) {
-		storedBBPs.allocate(cfg.count());
+	CFGP(const CFG& cfg): _oldCFG(cfg) { _BBPs.allocate(cfg.count()); }
+	~CFGP(){
+		for (auto bbp: _BBPs)
+			delete(bbp);
 	}
 
-	inline AllocArray<BBP*>* BBPs(void){
-		return &storedBBPs;
-	}
-	inline void addBBP(BBP* bbp) {
-		storedBBPs[bbp->index()] = bbp;
-		
-	}
+	inline AllocArray<BBP*>* BBPs(void){ return &_BBPs; }
+	inline void addBBP(BBP* bbp) { _BBPs[bbp->index()] = bbp; }
+	inline BBP* entry(void){ return _BBPs[0]; }
 
-	inline const CFG& oldCFG(void) {
-		return storedOldCFG;
-	}
+	inline const CFG& oldCFG(void) { return _oldCFG; }
 
 private:
-	AllocArray<BBP*> storedBBPs;
-	const CFG& storedOldCFG;
+	AllocArray<BBP*> _BBPs;
+	const CFG& _oldCFG;
 };
 
 
 class CFGCollectionP {
 public:
-	CFGCollectionP() {
+	CFGCollectionP() {}
+	~CFGCollectionP(){ // Destructor
+		for (auto cfgp: _CFGPs)
+            delete(cfgp);
+    }
 
-	}
-	void add(CFGP& cfgp){
-		CFGPs.add(cfgp);
-	}
+	inline void add(CFGP* cfgp){ _CFGPs.add(cfgp); }
+	inline List<CFGP*> CFGPs(){ return _CFGPs; }
+
 private:
-	List<CFGP&> CFGPs;
+	List<CFGP*> _CFGPs;
 };
 
 
