@@ -25,25 +25,40 @@ class CFGP;
 
 class BBP {
 public:
-	BBP (const Block& oldBB): _oldBB(oldBB) {}
+	BBP (Block& oldBB): _oldBB(oldBB) {}
 
 	inline List<int> tags(void){ return _tags; }
 	inline void addTag(int newTag) { _tags.add(newTag); }
 
-	inline List<BBP&> outEdges(void){ return _outEdges; }
-	inline void addoutEdge(BBP& newEdge){ _outEdges.add(newEdge); }
+	inline List<BBP*> outEdges(void){ return _outEdges; }
+	inline void addOutEdge(BBP* newEdge){ _outEdges.add(newEdge); }
 
-	inline const Block& oldBB(void){ return _oldBB; }
+	inline Block& oldBB(void){ return _oldBB; }
 
 	inline int index(void) { return _oldBB.index(); }
 
 	inline BBPSynth *toSynth(void);
+
+	bool equals(BBP& other){
+		return index() == other.index();
+	}
 	
 private:
 	List<int> _tags;
-	List<BBP&> _outEdges;
-	const Block& _oldBB;
+	List<BBP*> _outEdges;
+	Block& _oldBB;
 };
+
+namespace elm {
+  template<>
+  class Equiv<BBP *> {
+  public:
+    static inline bool isEqual(BBP *bbp1, BBP *bbp2) {
+      return bbp1->equals(*bbp2);
+    }
+  };
+}
+
 
 
 
@@ -147,6 +162,9 @@ private:
 
 	int setCount;
 	AllocArray<CFGCollectionP> cfgsP;
+	const CFGCollection* cfgColl;
+	const hard::Cache* icache;
+	const CFG* entryCfg;
 };
 
 
