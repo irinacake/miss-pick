@@ -47,7 +47,10 @@ public:
 
 	inline BBPSynth *toSynth(void);
 
-	inline bool equals(BBP& other){ return _oldBB == other._oldBB; }
+	inline bool equals(BBP& other){
+		cout << "equals called : " << (_oldBB->index() == other.index()) << endl;
+		return _oldBB->index() == other._oldBB->index();
+		}
 
 private:
 	List<int> _tags;
@@ -108,6 +111,8 @@ public:
 	//inline void add(CFGP* cfgp){ _CFGPs.add(cfgp); }
 	inline ListMap<CFG*,CFGP*> CFGPs(){ return _CFGPs; }
 
+	friend elm::io::Output &operator<<(elm::io::Output &output, const CFGCollectionP &collP);
+
 private:
 	ListMap<CFG*,CFGP*> _CFGPs;
 };
@@ -150,6 +155,7 @@ protected:
 	void processCFG(WorkSpace *ws, CFG *cfg) override {}
     void dump(WorkSpace *ws, Output &out) override;
 	//void configure() override;
+	bool belongsTo(Block* bb, int set);
 
 private:
 	int exec_time;

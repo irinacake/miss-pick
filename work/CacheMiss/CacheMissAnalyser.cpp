@@ -53,8 +53,10 @@ void CacheMissProcessor::computeAnalysis(CFG *g, CacheSetState *initState, sys::
     Vector<todoItem> todo;
 
     int i = 0;
+
+    cout << "computing CacheMissProcessor" << endl;
     for (int set = 0; set < icache->setCount(); set++) {
-        cout << "computing new set : " << set << endl;
+        //cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
         todoItem initItem;
