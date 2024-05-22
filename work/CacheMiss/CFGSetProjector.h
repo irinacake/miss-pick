@@ -39,7 +39,7 @@ public:
 	inline void addTag(int newTag) { _tags.add(newTag); }
 
 	inline List<BBP*,BBPEquiv> outEdges(void){ return _outEdges; }
-	inline void addOutEdge(BBP* newEdge){ _outEdges.add(newEdge); }
+	inline void addOutEdge(BBP* newEdge){ if (!_outEdges.contains(newEdge)) _outEdges.add(newEdge); }
 
 	inline Block* oldBB(void){ return _oldBB; }
 
@@ -47,10 +47,7 @@ public:
 
 	inline BBPSynth *toSynth(void);
 
-	inline bool equals(BBP& other){
-		cout << "equals called : " << (_oldBB->index() == other.index()) << endl;
-		return _oldBB->index() == other._oldBB->index();
-		}
+	inline bool equals(BBP& other){ return _oldBB->index() == other._oldBB->index(); }
 
 private:
 	List<int> _tags;
@@ -79,7 +76,12 @@ inline BBPSynth *BBP::toSynth(void) { return static_cast<BBPSynth *>(this); }
 
 class CFGP {
 public:
-	CFGP(CFG* cfg): _oldCFG(cfg) { _BBPs.allocate(cfg->count()); }
+	CFGP(CFG* cfg): _oldCFG(cfg) {
+		_BBPs.allocate(cfg->count());
+		for (auto bbp: _BBPs){
+			bbp = nullptr;
+		}
+	}
 	~CFGP(){
 		for (auto bbp: _BBPs)
 			delete(bbp);

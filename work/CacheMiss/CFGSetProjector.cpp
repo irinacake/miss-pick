@@ -1,5 +1,6 @@
 #include "CFGSetProjector.h"
 #include <otawa/cfg/Loop.h>
+#include "CacheMissDebug.h"
 
 
 elm::io::Output &operator<<(elm::io::Output &output, const CFGCollectionP &collP) {
@@ -43,7 +44,7 @@ bool CfgSetProjectorProcessor::belongsTo(Block* bb, int set) {
 
 void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {  
 
-    cout << "CFG Projector - processing" << endl;
+    DEBUG("CFG Projector - processing" << endl);
 	
     cfgColl = COLLECTED_CFG_FEATURE.get(workspace());
     icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
@@ -65,7 +66,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
     // set by set loop
     for (int currSet=0; currSet < setCount; currSet++){
 
-        cout << "\n\n\n------------\nprocessing set : " << currSet << "\n------------" << endl;
+        DEBUG("\n\n\n------------\nprocessing set : " << currSet << "\n------------" << endl);
         //CFGCollectionP collP;
         //cfgsP[currSet] = collP;
 
@@ -75,7 +76,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
             auto cfg = todoCfg.pop();
             auto cfgP = new CFGP(cfg);
 
-            cout << "processing cfg : " << cfg->name() << endl;
+            DEBUG("processing cfg : " << cfg->name() << endl);
 
             cfgsP[currSet].add(cfgP);
 
@@ -92,55 +93,51 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
                 auto currItem = todo.pop();
                 auto prev = currItem.fst;
                 auto bb = currItem.snd;
-                cout << "\tprocessing bb  : " << bb << endl;
+                DEBUG("\tprocessing bb  : " << bb << endl);
 
                 if ( bb->isBasic()
                         && !belongsTo(bb, currSet)
                             && !Loop::of(bb)->isHeader(bb) ){
                     
-                    cout << "\t\tbasic, wrong set and not loop header" << endl;
+                    DEBUG("\t\tbasic, wrong set and not loop header" << endl);
                     for (auto e: bb->outEdges()){
                         auto sink = e->sink();
-                        cout << "\t\tto add : " << sink << endl;
-                        if ( !( e->isReturn() && Loop::of(bb)->equals(Loop::of(prev->oldBB())) ) ){
-                            cout << "\t\t\tyes, adding" << endl;
-                            todo.add(pair(prev,sink));
-                        }
+                        DEBUG("\t\tto add : " << sink << endl);
+                        todo.add(pair(prev,sink));
+                        
                     }
                 } else {
-                    cout << "\t\t else" << endl;
+                    DEBUG("\t\t else" << endl);
                     //if (bb->isSynth() && !SYNTHCALL(bb->toSynth()->callee())){
                     //    SYNTHCALL(bb->toSynth()->callee()) = true;
                     //    todoCfg.add(bb->toSynth()->callee());
                     //}
                     if (bb->isSynth() && !cfgsP[currSet].CFGPs().hasKey(bb->toSynth()->callee()) ){
-                        cout << "\t\t\tblock is synth and callee is new" << endl;
+                        DEBUG("\t\t\tblock is synth and callee is new" << endl);
                         todoCfg.add(bb->toSynth()->callee());
                     }
 
                     BBP* bbp;
                     if ((*cfgP->BBPs())[bb->index()] == nullptr) {
-                        cout << "\t\t\tcreating new BBP" << endl;
+                        DEBUG("\t\t\tcreating new BBP" << endl);
                         bbp = new BBP(bb);
                         cfgP->addBBP(bbp);
-                    } else {
-                        cout << "\t\t\tusing old BBP" << endl;
-                        bbp = (*cfgP->BBPs())[bb->index()];
-                    }
 
-                    cout << "\t\t\tadding new edge" << endl;
-                    prev->addOutEdge(bbp);
+                        DEBUG("\t\t\t\tAdding " << bbp->oldBB() << " to " << prev->oldBB() << endl);
+                        prev->addOutEdge(bbp);
 
-                    for (auto e: bb->outEdges()){
-                        auto sink = e->sink();
-                        cout << "\t\t\tto add : " << sink << endl;
-
-                        if ( (*cfgP->BBPs())[sink->index()] == nullptr || !bbp->outEdges().contains((*cfgP->BBPs())[sink->index()]) ){
-                            cout << "\t\t\t\tnot yet contained, added" << endl;
-                            todo.add(pair(bbp,sink));
-                        } else {
-                            cout << "\t\t\t\tcontained, not added" << endl;
+                        for (auto e: bb->outEdges()){
+                            auto sink = e->sink();
+                            DEBUG("\t\t\tto add : " << sink << endl);
+                            if ( (*cfgP->BBPs())[sink->index()] == nullptr || !bbp->outEdges().contains((*cfgP->BBPs())[sink->index()]) ){
+                                if (!todo.contains(pair(bbp,sink))) {
+                                    todo.add(pair(bbp,sink));
+                                }
+                            }
                         }
+                    } else {
+                        bbp = (*cfgP->BBPs())[bb->index()];
+                        prev->addOutEdge(bbp);
                     }
                 }
             }
@@ -153,10 +150,21 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
 void CfgSetProjectorProcessor::dump(WorkSpace *ws, Output &out) {
     out << "Dumping projector" << endl;
 
-    for (auto c: cfgsP[0].CFGPs()) {
-        out << "c : " << c->oldCFG()->name() << endl;
-        for (auto bp : *c->BBPs()){
-            out << "\t bp : " << bp->index() << endl;
+    for (int i=0; i<setCount; i++){
+        out << "\nProjection for set " << i << endl;
+        for (auto c: cfgsP[i].CFGPs()) {
+            out << "Sub CFG : " << c->oldCFG()->name() << endl;
+            out << "\t=====" << endl;
+            for (auto bp : *c->BBPs()){
+                if (bp != nullptr) {
+                    out << "\t--Projected BB : " << bp->oldBB() << endl;
+                    for (auto e: bp->outEdges()){
+                        out << "\t\t-> Edge to : " << e->oldBB() << endl;
+                    }
+                    out << "\t\t-----" << endl;
+                }
+            }
+            out << "\t=====" << endl;
         }
     }
 
