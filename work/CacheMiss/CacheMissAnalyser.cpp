@@ -456,11 +456,19 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
 
 
 
+    
+    auto pcoll = CFG_SET_PROJECTOR_FEATURE.get(workspace());
 
-    auto a = CFG_SET_PROJECTOR_FEATURE.get(workspace());
+    //cout << a << endl;
+    auto a = pcoll->graphOfSet(3);
 
-    cout << a << endl;
-    a->getGraph(3);
+    cout << "inside cache miss, printing set 3 : \n" << *a << endl;
+
+    auto b = a->entry();
+    cout << "\n\n\n printing entry cfg of set 3 :\n" << *b << endl;
+
+    auto c = b->entry();
+    cout << "\n\n\n printing entry BBP of entry cfg of set 3 :\n" << *c << endl;
 
 
 

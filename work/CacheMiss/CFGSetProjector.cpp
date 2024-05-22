@@ -3,12 +3,49 @@
 #include "CacheMissDebug.h"
 
 
-elm::io::Output &operator<<(elm::io::Output &output, const CFGCollectionP &collP) {
-    output << "{";
-    for (auto c: collP._CFGPs){
-        output << c << endl;
+
+elm::io::Output &operator<<(elm::io::Output &output, const BBP &bbp) {
+    output << "Projected BB : " << bbp._oldBB << endl;
+    for (auto e: bbp._outEdges){
+        output << "\t-> Edge to : " << e->oldBB() << endl;
     }
-    output << "}";
+    output << "\t-----" << endl;
+    return output;
+}
+
+
+elm::io::Output &operator<<(elm::io::Output &output, const CFGP &cfgp) {
+    output << "Sub CFG : " << cfgp._oldCFG << endl;
+    output << "\t=====" << endl;
+    for (auto bbp : cfgp._BBPs){
+        if (bbp != nullptr) {
+            output << "\t--Projected BB : " << bbp->oldBB() << endl;
+            for (auto e: bbp->outEdges()){
+                output << "\t\t-> Edge to : " << e->oldBB() << endl;
+            }
+            output << "\t\t-----" << endl;
+        }
+    }
+    output << "\t=====" << endl;
+    return output;
+}
+
+
+elm::io::Output &operator<<(elm::io::Output &output, const CFGCollectionP &collP) {
+    for (auto c: collP._CFGPs) {
+        output << "Sub CFG : " << c->oldCFG()->name() << endl;
+        output << "\t=====" << endl;
+        for (auto bbp : *c->BBPs()){
+            if (bbp != nullptr) {
+                output << "\t--Projected BB : " << bbp->oldBB() << endl;
+                for (auto e: bbp->outEdges()){
+                    output << "\t\t-> Edge to : " << e->oldBB() << endl;
+                }
+                output << "\t\t-----" << endl;
+            }
+        }
+        output << "\t=====" << endl;
+    }
     return output;
 }
 
@@ -41,34 +78,28 @@ bool CfgSetProjectorProcessor::belongsTo(Block* bb, int set) {
     return false;
 }
 
-
-void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {  
-
-    DEBUG("CFG Projector - processing" << endl);
-	
+void CfgSetProjectorProcessor::setup(WorkSpace *ws){
     cfgColl = COLLECTED_CFG_FEATURE.get(workspace());
     icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
     entryCfg = cfgColl->entry();
 
-
     setCount = icache->setCount();
     cfgsP.allocate(setCount);
 
+}
 
+void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
+    DEBUG("CFG Projector - processing" << endl);   
     
     Vector<CFG *> todoCfg;
     Vector<Pair<BBP *,Block *>> todo;
-    //p::id<bool> SYNTHCALL("SYNTHCALL");
-    //for (auto c: *cfgColl) {
-    //    SYNTHCALL(c) = false;
-    //}
 
     // set by set loop
     for (int currSet=0; currSet < setCount; currSet++){
 
         DEBUG("\n\n\n------------\nprocessing set : " << currSet << "\n------------" << endl);
         //CFGCollectionP collP;
-        //cfgsP[currSet] = collP;
+        cfgsP[currSet] = new CFGCollectionP(currSet, cfgColl);
 
         todoCfg.add(entryCfg);
 
@@ -78,7 +109,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
 
             DEBUG("processing cfg : " << cfg->name() << endl);
 
-            cfgsP[currSet].add(cfgP);
+            cfgsP[currSet]->add(cfgP);
 
 
             auto alpha = new BBP(cfg->entry());
@@ -112,7 +143,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
                     //    SYNTHCALL(bb->toSynth()->callee()) = true;
                     //    todoCfg.add(bb->toSynth()->callee());
                     //}
-                    if (bb->isSynth() && !cfgsP[currSet].CFGPs().hasKey(bb->toSynth()->callee()) ){
+                    if (bb->isSynth() && !cfgsP[currSet]->CFGPs().hasKey(bb->toSynth()->callee()) ){
                         DEBUG("\t\t\tblock is synth and callee is new" << endl);
                         todoCfg.add(bb->toSynth()->callee());
                     }
@@ -145,14 +176,10 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws) {
     }
 }
 
-
-
 void CfgSetProjectorProcessor::dump(WorkSpace *ws, Output &out) {
-    out << "Dumping projector" << endl;
-
     for (int i=0; i<setCount; i++){
         out << "\nProjection for set " << i << endl;
-        for (auto c: cfgsP[i].CFGPs()) {
+        for (auto c: cfgsP[i]->CFGPs()) {
             out << "Sub CFG : " << c->oldCFG()->name() << endl;
             out << "\t=====" << endl;
             for (auto bp : *c->BBPs()){
@@ -167,6 +194,4 @@ void CfgSetProjectorProcessor::dump(WorkSpace *ws, Output &out) {
             out << "\t=====" << endl;
         }
     }
-
-    out << "done" << endl;
 }

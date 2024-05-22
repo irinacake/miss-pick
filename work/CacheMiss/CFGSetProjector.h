@@ -49,6 +49,8 @@ public:
 
 	inline bool equals(BBP& other){ return _oldBB->index() == other._oldBB->index(); }
 
+	friend elm::io::Output &operator<<(elm::io::Output &output, const BBP &bbp);
+
 private:
 	List<int> _tags;
 	List<BBP*,BBPEquiv> _outEdges;
@@ -82,16 +84,15 @@ public:
 			bbp = nullptr;
 		}
 	}
-	~CFGP(){
-		for (auto bbp: _BBPs)
-			delete(bbp);
-	}
+	~CFGP(){ for (auto bbp: _BBPs){ delete(bbp); } }
 
 	inline AllocArray<BBP*>* BBPs(void){ return &_BBPs; }
 	inline void addBBP(BBP* bbp) { _BBPs[bbp->index()] = bbp; }
 	inline BBP* entry(void){ return _BBPs[0]; }
 
 	inline CFG* oldCFG(void) { return _oldCFG; }
+
+	friend elm::io::Output &operator<<(elm::io::Output &output, const CFGP &cfgp);
 
 private:
 	AllocArray<BBP*> _BBPs;
@@ -101,11 +102,8 @@ private:
 
 class CFGCollectionP {
 public:
-	CFGCollectionP() {}
-	~CFGCollectionP(){ // Destructor
-		for (auto cfgp: _CFGPs)
-            delete(cfgp);
-    }
+	CFGCollectionP(int set, const CFGCollection* cfgColl): _set(set), _oldCfgColl(cfgColl){}
+	~CFGCollectionP(){ for (auto cfgp: _CFGPs){ delete(cfgp); } }
 
 	inline void add(CFGP* cfgp){
 		_CFGPs.put(cfgp->oldCFG(), cfgp);
@@ -113,9 +111,15 @@ public:
 	//inline void add(CFGP* cfgp){ _CFGPs.add(cfgp); }
 	inline ListMap<CFG*,CFGP*> CFGPs(){ return _CFGPs; }
 
+	inline CFGP* entry(void) {
+		return _CFGPs.get(_oldCfgColl->entry());
+	}
+
 	friend elm::io::Output &operator<<(elm::io::Output &output, const CFGCollectionP &collP);
 
 private:
+	int _set;
+	const CFGCollection* _oldCfgColl;
 	ListMap<CFG*,CFGP*> _CFGPs;
 };
 
@@ -124,7 +128,7 @@ private:
 
 class ProjectedCFGColl {
 public:
-	virtual CFGCollectionP& getGraph(int set) = 0;
+	virtual CFGCollectionP* graphOfSet(int set) = 0;
 };
 
 
@@ -144,28 +148,24 @@ public:
 		else
 			return nullptr;
 	}
+	~CfgSetProjectorProcessor(){ for (auto cfgp:cfgsP) { delete(cfgp); } }
 
-
-	CFGCollectionP& getGraph(int set) override {
+	CFGCollectionP* graphOfSet(int set) override {
 		ASSERTP(set > 0 && set < setCount, "set value out of bound");
 		return cfgsP[set];
 	}
 
 
 protected:
+	void setup(WorkSpace *ws) override;
 	void processAll(WorkSpace *ws) override;
 	void processCFG(WorkSpace *ws, CFG *cfg) override {}
     void dump(WorkSpace *ws, Output &out) override;
-	//void configure() override;
 	bool belongsTo(Block* bb, int set);
 
 private:
-	int exec_time;
-	int exit_value;
-
-
 	int setCount;
-	AllocArray<CFGCollectionP> cfgsP;
+	AllocArray<CFGCollectionP*> cfgsP;
 	const CFGCollection* cfgColl;
 	const hard::Cache* icache;
 	CFG* entryCfg;
