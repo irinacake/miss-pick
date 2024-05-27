@@ -24,7 +24,7 @@ class CFGP;
  * Projected Block classes
 */
 
-class BBP {
+class BBP: public PropList {
 public:
 	BBP (Block* oldBB): _oldBB(oldBB) {}
 
@@ -60,11 +60,11 @@ private:
 
 class BBPSynth: public BBP {
 public:
-	BBPSynth(Block* block, const CFGP& callee): BBP(block), _callee(callee) {}
+	BBPSynth(Block* block, CFGP* callee): BBP(block), _callee(callee) {}
 
-	inline const CFGP& callee() { return _callee; }
+	inline CFGP* callee() { return _callee; }
 private:
-	const CFGP& _callee;
+	CFGP* _callee;
 };
 
 // delayed definition
@@ -80,8 +80,8 @@ class CFGP {
 public:
 	CFGP(CFG* cfg): _oldCFG(cfg) {
 		_BBPs.allocate(cfg->count());
-		for (auto bbp: _BBPs){
-			bbp = nullptr;
+		for(int i=0; i < cfg->count(); i++){
+			_BBPs[i] = nullptr;
 		}
 	}
 	~CFGP(){ for (auto bbp: _BBPs){ delete(bbp); } }
@@ -89,6 +89,8 @@ public:
 	inline AllocArray<BBP*>* BBPs(void){ return &_BBPs; }
 	inline void addBBP(BBP* bbp) { _BBPs[bbp->index()] = bbp; }
 	inline BBP* entry(void){ return _BBPs[0]; }
+	inline BBP* get(int x){ return _BBPs[x]; }
+
 
 	inline CFG* oldCFG(void) { return _oldCFG; }
 
@@ -113,6 +115,10 @@ public:
 
 	inline CFGP* entry(void) {
 		return _CFGPs.get(_oldCfgColl->entry());
+	}
+
+	inline CFGP* get(CFG* cfg) {
+		return _CFGPs.get(cfg);
 	}
 
 	friend elm::io::Output &operator<<(elm::io::Output &output, const CFGCollectionP &collP);
@@ -151,7 +157,7 @@ public:
 	~CfgSetProjectorProcessor(){ for (auto cfgp:cfgsP) { delete(cfgp); } }
 
 	CFGCollectionP* graphOfSet(int set) override {
-		ASSERTP(set > 0 && set < setCount, "set value out of bound");
+		ASSERTP(set >= 0 && set < setCount, "set value out of bound");
 		return cfgsP[set];
 	}
 

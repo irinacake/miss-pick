@@ -91,32 +91,34 @@ void CfgSetProjectorProcessor::setup(WorkSpace *ws){
 void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
     DEBUG("CFG Projector - processing" << endl);   
     
-    Vector<CFG *> todoCfg;
+    Vector<CFGP *> todoCfg;
     Vector<Pair<BBP *,Block *>> todo;
 
     // set by set loop
     for (int currSet=0; currSet < setCount; currSet++){
 
+        //cout << "\n\n\n------------\nprocessing set : " << currSet << "\n------------" << endl;
         DEBUG("\n\n\n------------\nprocessing set : " << currSet << "\n------------" << endl);
         //CFGCollectionP collP;
         cfgsP[currSet] = new CFGCollectionP(currSet, cfgColl);
 
-        todoCfg.add(entryCfg);
 
+        auto cfgP = new CFGP(entryCfg);
+        cfgsP[currSet]->add(cfgP);
+        todoCfg.add(cfgP);
+        
         while (!todoCfg.isEmpty()){
-            auto cfg = todoCfg.pop();
-            auto cfgP = new CFGP(cfg);
+            auto currCfgp = todoCfg.pop();
+            auto cfg = currCfgp->oldCFG();
 
             DEBUG("processing cfg : " << cfg->name() << endl);
 
-            cfgsP[currSet]->add(cfgP);
-
-
             auto alpha = new BBP(cfg->entry());
-            cfgP->addBBP(alpha);
+            currCfgp->addBBP(alpha);
 
             for (auto e: cfg->entry()->outEdges()){
                 auto sink = e->sink();
+                DEBUG("(entry)to add : " << sink << endl);
                 todo.add(pair(alpha,sink));
             }
 
@@ -134,7 +136,9 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                     for (auto e: bb->outEdges()){
                         auto sink = e->sink();
                         DEBUG("\t\tto add : " << sink << endl);
-                        todo.add(pair(prev,sink));
+                        if (!todo.contains(pair(prev,sink))) {
+                            todo.add(pair(prev,sink));
+                        }
                         
                     }
                 } else {
@@ -143,32 +147,53 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                     //    SYNTHCALL(bb->toSynth()->callee()) = true;
                     //    todoCfg.add(bb->toSynth()->callee());
                     //}
+                    
                     if (bb->isSynth() && !cfgsP[currSet]->CFGPs().hasKey(bb->toSynth()->callee()) ){
-                        DEBUG("\t\t\tblock is synth and callee is new" << endl);
-                        todoCfg.add(bb->toSynth()->callee());
+                        DEBUG("\t\t\tblock is synth and callee is new, adding : " << bb->toSynth()->callee()->name() << endl);
+                        auto newCfgP = new CFGP(bb->toSynth()->callee());
+                        cfgsP[currSet]->add(newCfgP);
+                        todoCfg.add(newCfgP);
                     }
 
                     BBP* bbp;
-                    if ((*cfgP->BBPs())[bb->index()] == nullptr) {
+                    if (currCfgp->get(bb->index()) == nullptr) {
                         DEBUG("\t\t\tcreating new BBP" << endl);
-                        bbp = new BBP(bb);
-                        cfgP->addBBP(bbp);
+                        if (bb->isSynth()) {
+                            bbp = new BBPSynth(bb, cfgsP[currSet]->get(bb->toSynth()->callee()));
+                        } else {
+                            bbp = new BBP(bb);
+                            if (bb->isBasic()) {
+                                int currTag = -1;
+                                for (auto inst : *bb->toBasic()){
+                                    if (currTag != icache->block(inst->address())){ // TAG
+                                        currTag = icache->block(inst->address());
+                                        if (currSet == icache->set(inst->address())){
+                                            bbp->addTag(icache->block(inst->address()));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        currCfgp->addBBP(bbp);
 
-                        DEBUG("\t\t\t\tAdding " << bbp->oldBB() << " to " << prev->oldBB() << endl);
+                        DEBUG("\t\t\tAdding " << bbp->oldBB() << " to " << prev->oldBB() << endl);
                         prev->addOutEdge(bbp);
 
                         for (auto e: bb->outEdges()){
                             auto sink = e->sink();
                             DEBUG("\t\t\tto add : " << sink << endl);
-                            if ( (*cfgP->BBPs())[sink->index()] == nullptr || !bbp->outEdges().contains((*cfgP->BBPs())[sink->index()]) ){
+                            if ( currCfgp->get(sink->index()) == nullptr || !bbp->outEdges().contains(currCfgp->get(sink->index())) ){
                                 if (!todo.contains(pair(bbp,sink))) {
                                     todo.add(pair(bbp,sink));
                                 }
                             }
                         }
                     } else {
-                        bbp = (*cfgP->BBPs())[bb->index()];
+                        DEBUG("\t\t\tretrieving old BBP" << endl);
+                        bbp = currCfgp->get(bb->index());
+                        DEBUG("\t\t\tAdding " << bbp->oldBB() << " to " << prev->oldBB() << endl);
                         prev->addOutEdge(bbp);
+                        DEBUG("\t\t\t" << *prev << endl);
                     }
                 }
             }
@@ -189,6 +214,10 @@ void CfgSetProjectorProcessor::dump(WorkSpace *ws, Output &out) {
                         out << "\t\t-> Edge to : " << e->oldBB() << endl;
                     }
                     out << "\t\t-----" << endl;
+                    if (bp->oldBB()->isSynth()) {
+                        out << "\t\t--> SynthLink to : " << bp->toSynth()->callee()->oldCFG()->name() << endl;
+                        out << "\t\t-----" << endl;
+                    }
                 }
             }
             out << "\t=====" << endl;

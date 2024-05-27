@@ -12,6 +12,7 @@
 #include "MultipleSetsSaver.h"
 #include "CacheMissDebug.h"
 
+#include "CFGSetProjector.h"
 
 
 using namespace elm;
@@ -34,17 +35,22 @@ protected:
 	//void configure() override;
 
 	void initState();
+	void initStateP();
 	void printStates();
 	void computeAnalysis(CFG *g, CacheSetState *initState, sys::StopWatch& mySW);
 	void computeAnalysisHeapless(CFG *g, CacheSetState *initState, sys::StopWatch& mySW);
+	void computeProjectedAnalysis(CacheSetState *initState, sys::StopWatch& mySW);
 	void makeStats(elm::io::Output &output);
 
 	void getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates);
+	void getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates);
 
 private:
 	int exec_time;
 	CacheSetState* mycache;
 	const otawa::hard::Cache* icache;
+	ProjectedCFGColl* pColl;
+	CFG* maincfg;
 	int exit_value;
 };
 
