@@ -385,6 +385,8 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
         t::uint64 completedCfg = 0;
 
         todoItem initItem;
+        if (pColl->graphOfSet(set)->get(maincfg) == nullptr)
+            continue;
         initItem.block = pColl->graphOfSet(set)->get(maincfg)->entry();
         initItem.cacheSetState = initState->clone();
 

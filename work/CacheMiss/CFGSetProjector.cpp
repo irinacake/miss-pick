@@ -89,7 +89,7 @@ void CfgSetProjectorProcessor::setup(WorkSpace *ws){
 }
 
 void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
-    DEBUGP("CFG Projector - processing" << endl);   
+    DEBUGP("CFG Projector - processing" << endl);
     
     Vector<CFGP *> todoCfg;
     Vector<Pair<BBP *,Block *>> todo;
@@ -169,6 +169,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                                         currTag = icache->block(inst->address());
                                         if (currSet == icache->set(inst->address())){
                                             bbp->addTag(icache->block(inst->address()));
+                                            currCfgp->setInvolved();
                                         }
                                     }
                                 }
@@ -199,13 +200,83 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
             }
         }
     }
+
+
+
+
+    DEBUGP("CFG Projector - simplifying" << endl);
+
+    bool change = true;
+
+    while (change){
+        change = false;
+        for (int currSet=0; currSet < setCount; currSet++){
+            for (auto cfgp: cfgsP[currSet]->CFGPs()){
+                for (auto bbp: *cfgp->BBPs()){
+                    if (bbp != nullptr){
+                        for (auto sink: bbp->outEdges()){
+                            if (sink->oldBB()->isSynth()){
+                                if (!sink->toSynth()->callee()->isInvolved()){
+                                    //cout << *sink << endl;
+                                    for (auto sinkSink: sink->outEdges()){
+                                        cout << "creating bypass from : " << bbp->oldBB() << endl;
+                                        cout << "to : " << sinkSink->oldBB() << endl;
+                                        bbp->addOutEdge(sinkSink);
+                                    }
+                                    bbp->removeOutEdge(sink);
+                                    change = true;
+                                }
+                            }   
+                        }
+
+                        
+                        if (!bbp->oldBB()->isSynth() && bbp->tags().count() == 0){
+                            for (auto sink: bbp->outEdges()){
+                                if (sink == bbp) {
+                                    cout << "removing self loop of " << bbp->oldBB() << " from CFG :" << bbp->oldBB()->cfg() << endl;
+                                    bbp->removeOutEdge(sink);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (int currSet=0; currSet < setCount; currSet++){
+        for (auto cfgp: cfgsP[currSet]->CFGPs()){
+            for (auto bbp: *cfgp->BBPs()){
+                if (bbp != nullptr){
+                    if (bbp->oldBB()->isSynth()){
+                        if (!bbp->toSynth()->callee()->isInvolved()){
+                            cout << "removing bbp : " << *bbp << endl;
+                            cfgp->removeBBP(bbp);
+                        }
+                    }   
+                }
+            }
+        }
+    }
+
+    for (int currSet=0; currSet < setCount; currSet++){
+        for (auto cfgp: cfgsP[currSet]->CFGPs()){
+            if (!cfgp->isInvolved()){
+                cout << "removing cfg : " << cfgp->oldCFG() << endl;
+                cfgsP[currSet]->remove(cfgp);
+            }
+        }
+    }
+
+
+
 }
 
 void CfgSetProjectorProcessor::dump(WorkSpace *ws, Output &out) {
     for (int i=0; i<setCount; i++){
         out << "\nProjection for set " << i << endl;
         for (auto c: cfgsP[i]->CFGPs()) {
-            out << "Sub CFG : " << c->oldCFG()->name() << endl;
+            out << "Sub CFG : " << c->oldCFG()->name() << ", involved : " << c->isInvolved() << endl;
             out << "\t=====" << endl;
             for (auto bp : *c->BBPs()){
                 if (bp != nullptr) {

@@ -40,6 +40,9 @@ public:
 
 	inline List<BBP*,BBPEquiv> outEdges(void){ return _outEdges; }
 	inline void addOutEdge(BBP* newEdge){ if (!_outEdges.contains(newEdge)) _outEdges.add(newEdge); }
+	inline void removeOutEdge(BBP* edgeToDelete){
+		_outEdges.remove(edgeToDelete);
+	}
 
 	inline Block* oldBB(void){ return _oldBB; }
 
@@ -79,6 +82,7 @@ inline BBPSynth *BBP::toSynth(void) { return static_cast<BBPSynth *>(this); }
 class CFGP {
 public:
 	CFGP(CFG* cfg): _oldCFG(cfg) {
+		involved = false;
 		_BBPs.allocate(cfg->count());
 		for(int i=0; i < cfg->count(); i++){
 			_BBPs[i] = nullptr;
@@ -88,9 +92,12 @@ public:
 
 	inline AllocArray<BBP*>* BBPs(void){ return &_BBPs; }
 	inline void addBBP(BBP* bbp) { _BBPs[bbp->index()] = bbp; }
+	inline void removeBBP(BBP* bbp) { _BBPs[bbp->index()] = nullptr; delete(bbp); }
 	inline BBP* entry(void){ return _BBPs[0]; }
 	inline BBP* get(int x){ return _BBPs[x]; }
 
+	inline void setInvolved() { involved = true; }
+	inline bool isInvolved() { return involved; }
 
 	inline CFG* oldCFG(void) { return _oldCFG; }
 
@@ -99,6 +106,7 @@ public:
 private:
 	AllocArray<BBP*> _BBPs;
 	CFG* _oldCFG;
+	bool involved;
 };
 
 
@@ -110,6 +118,10 @@ public:
 	inline void add(CFGP* cfgp){
 		_CFGPs.put(cfgp->oldCFG(), cfgp);
 	}
+	inline void remove(CFGP* cfgp){
+		_CFGPs.remove(cfgp->oldCFG());
+		delete(cfgp);
+	}
 	//inline void add(CFGP* cfgp){ _CFGPs.add(cfgp); }
 	inline ListMap<CFG*,CFGP*> CFGPs(){ return _CFGPs; }
 
@@ -118,7 +130,7 @@ public:
 	}
 
 	inline CFGP* get(CFG* cfg) {
-		return _CFGPs.get(cfg);
+		return _CFGPs.get(cfg,nullptr);
 	}
 
 	friend elm::io::Output &operator<<(elm::io::Output &output, const CFGCollectionP &collP);
