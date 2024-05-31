@@ -380,7 +380,6 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
     //cout << "computing CacheMissProcessor" << endl;
     for (int set = 0; set < icache->setCount(); set++) {
         cout << "computing new set : " << set << endl;
-        if (set != 175) continue;
         DEBUG("computing new set : " << set << endl);
 
         t::uint64 completedCfg = 0;
@@ -412,15 +411,10 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
                     DEBUG("- Adding exitCS item " << *cs << ", to :" << endl);
                     for (auto sink: callstack.caller->outEdges()){
                         DEBUG("- - " << sink->oldBB());
-                        if(!SAVEDP(sink)->contains(cs)){
-                            DEBUG(", yes" << endl);
-                            todoItem itemToAdd;
-                            itemToAdd.block = sink;
-                            itemToAdd.cacheSetState = cs->clone();
-                            todo.top().workingList.add(itemToAdd);
-                        } else {
-                            DEBUG(", already contained" << endl);
-                        }
+                        todoItem itemToAdd;
+                        itemToAdd.block = sink;
+                        itemToAdd.cacheSetState = cs->clone();
+                        todo.top().workingList.add(itemToAdd);
                     }
                     //delete(cs);
                 }
@@ -443,124 +437,91 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
             DEBUG("Before : " << **SAVEDP(curItem.block) << endl);
 
             CacheSetState* newState = curItem.cacheSetState->clone();
-            SAVEDP(curItem.block)->add(newState);
+            if (SAVEDP(curItem.block)->add(newState)){
 
-            DEBUG("After : " << **SAVEDP(curItem.block) << endl);
+                DEBUG("After : " << **SAVEDP(curItem.block) << endl);
 
-
-            if (curItem.block->oldBB()->isEntry()) {
-                DEBUG("is Entry block:" << endl);
-                for (auto sink: curItem.block->outEdges()){
-                    if(!SAVEDP(sink)->contains(curItem.cacheSetState)){
+                if (curItem.block->oldBB()->isEntry()) {
+                    DEBUG("is Entry block:" << endl);
+                    for (auto sink: curItem.block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
                         todoItem itemToAdd;
                         itemToAdd.block = sink;
                         itemToAdd.cacheSetState = curItem.cacheSetState->clone();
                         todo.top().workingList.add(itemToAdd);
-                    } else {
-                        DEBUG("Not adding, bypass to exit" << endl);
-                        if ((todo.top().exitBypass == false) && (completedCfg & (1 << curItem.block->oldBB()->cfg()->index())) ) {
-                            auto exitbb = pColl->graphOfSet(set)->get(curItem.block->oldBB()->cfg())->get(curItem.block->oldBB()->cfg()->exit()->index());
-                            DEBUG("Exitbb found : " << exitbb->oldBB()->cfg() << endl);
-                            CacheSetsSaver* sState = SAVEDP(exitbb);
-                            for (auto* s: *sState->getSavedCacheSets()){
-                                todo.top().exitCS.add(s->clone());
-                            }
-                            todo.top().exitBypass = true;
-                        }
                     }
-                }
 
-                delete(curItem.cacheSetState);
+                    delete(curItem.cacheSetState);
 
-            } else if(curItem.block->oldBB()->isExit()) {
-                DEBUG("is Exit block:" << endl);
-                if (todo.top().caller != nullptr){
-                    if (!todo.top().exitCS.contains(curItem.cacheSetState)){
+                } else if(curItem.block->oldBB()->isExit()) {
+                    DEBUG("is Exit block:" << endl);
+                    if (todo.top().caller != nullptr){
                         DEBUG("- Adding "<< *curItem.cacheSetState << " to exitCS" << endl);
-                        DEBUG("- Adding "<< curItem.cacheSetState << " to exitCS" << endl);
                         todo.top().exitCS.add(curItem.cacheSetState);
-                    } else {
-                        DEBUG("- Not adding (contained)" << endl);
                     }
-                }
-                
-
-            } else if(curItem.block->oldBB()->isSynth()) {
-                DEBUG("is Synth block:" << endl);
-                
-                if ( curItem.block->toSynth()->callee() != nullptr ){
-                    DEBUG("- Adding " << curItem.block->toSynth()->callee()->entry()->oldBB() << endl);
-                    todoItem itemToAdd;
-                    itemToAdd.block = curItem.block->toSynth()->callee()->entry();
-                    itemToAdd.cacheSetState = curItem.cacheSetState;
-
-                    callStackP newCallStack;
-                    newCallStack.caller = curItem.block;
-                    newCallStack.workingList.add(itemToAdd);
-
-                    todo.add(newCallStack);
                     
-                } //else { // L'ajout des todos suivant devrait avoir des TOP partout (undefined behaviour)
-                //}
 
-            } else if (curItem.block->oldBB()->isBasic()) {
-                currTag = -1;
+                } else if(curItem.block->oldBB()->isSynth()) {
+                    DEBUG("is Synth block:" << endl);
+                    
+                    if ( curItem.block->toSynth()->callee() != nullptr ){
+                        DEBUG("- Adding " << curItem.block->toSynth()->callee()->entry()->oldBB() << endl);
+                        todoItem itemToAdd;
+                        itemToAdd.block = curItem.block->toSynth()->callee()->entry();
+                        itemToAdd.cacheSetState = curItem.cacheSetState;
 
-                DEBUG("is Basic block: (updating curCS) -> ");
+                        callStackP newCallStack;
+                        newCallStack.caller = curItem.block;
+                        newCallStack.workingList.add(itemToAdd);
 
-                for (auto inst : curItem.block->tags()){
-                    curItem.cacheSetState->update(inst);
-                }
+                        todo.add(newCallStack);
+                        
+                    } //else { // L'ajout des todos suivant devrait avoir des TOP partout (undefined behaviour)
+                    //}
 
-                DEBUG(*curItem.cacheSetState << endl);
+                } else if (curItem.block->oldBB()->isBasic()) {
+                    DEBUG("is Basic block: (updating curCS) -> ");
 
-                for (auto sink: curItem.block->outEdges()){
-                    if(!SAVEDP(sink)->contains(curItem.cacheSetState)){
+                    for (auto inst : curItem.block->tags()){
+                        curItem.cacheSetState->update(inst);
+                    }
+
+                    DEBUG(*curItem.cacheSetState << endl);
+
+                    for (auto sink: curItem.block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
                         todoItem itemToAdd;
                         itemToAdd.block = sink;
                         itemToAdd.cacheSetState = curItem.cacheSetState->clone();
                         todo.top().workingList.add(itemToAdd);
-                    } else {
-                        if ((todo.top().exitBypass == false) && (completedCfg & (1 << curItem.block->oldBB()->cfg()->index())) ) {
-                            auto exitbb = pColl->graphOfSet(set)->get(curItem.block->oldBB()->cfg())->get(curItem.block->oldBB()->cfg()->exit()->index());
-                            DEBUG("Exitbb found : " << exitbb->oldBB()->cfg() << endl);
-                            CacheSetsSaver* sState = SAVEDP(exitbb);
-                            for (auto* s: *sState->getSavedCacheSets()){
-                                todo.top().exitCS.add(s->clone());
-                            }
-                            todo.top().exitBypass = true;
-                        }
                     }
-                }
-                delete(curItem.cacheSetState);
-            } else if (curItem.block->oldBB()->isPhony()) {
-                DEBUG("is Phony block:" << endl);
-                for (auto sink: curItem.block->outEdges()){
-                    if((!SAVEDP(sink)->contains(curItem.cacheSetState))){
+                    delete(curItem.cacheSetState);
+                } else if (curItem.block->oldBB()->isPhony()) {
+                    DEBUG("is Phony block:" << endl);
+                    for (auto sink: curItem.block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
                         todoItem itemToAdd;
                         itemToAdd.block = sink;
                         itemToAdd.cacheSetState = curItem.cacheSetState->clone();
                         todo.top().workingList.add(itemToAdd);
-                    } else {
-                        if ((todo.top().exitBypass == false) && (completedCfg & (1 << curItem.block->oldBB()->cfg()->index())) ) {
-                            auto exitbb = pColl->graphOfSet(set)->get(curItem.block->oldBB()->cfg())->get(curItem.block->oldBB()->cfg()->exit()->index());
-                            DEBUG("Exitbb found : " << exitbb->oldBB()->cfg() << endl);
-                            CacheSetsSaver* sState = SAVEDP(exitbb);
-                            for (auto* s: *sState->getSavedCacheSets()){
-                                todo.top().exitCS.add(s);
-                            }
-                            todo.top().exitBypass = true;
-                        }
                     }
-                }
 
-                delete(curItem.cacheSetState);
-            } else if (curItem.block->oldBB()->isUnknown()) {
+                    delete(curItem.cacheSetState);
+                } else if (curItem.block->oldBB()->isUnknown()) {
+                } else {
+                    ASSERTP(false,"Unexpected block type");
+                }
             } else {
-                ASSERTP(false,"Unexpected block type");
+                DEBUG("Not adding, bypass to exit" << endl);
+                if ((todo.top().exitBypass == false) && (completedCfg & (1 << curItem.block->oldBB()->cfg()->index())) ) {
+                    auto exitbb = pColl->graphOfSet(set)->get(curItem.block->oldBB()->cfg())->get(curItem.block->oldBB()->cfg()->exit()->index());
+                    DEBUG("Exitbb found : " << exitbb->oldBB()->cfg() << endl);
+                    CacheSetsSaver* sState = SAVEDP(exitbb);
+                    for (auto* s: *sState->getSavedCacheSets()){
+                        todo.top().exitCS.add(s->clone());
+                    }
+                    todo.top().exitBypass = true;
+                }
             }
         }
     }
@@ -590,15 +551,15 @@ void CacheMissProcessor::getStats(int *mins, int *maxs, float *moys, int* bbCoun
     }
 }
 
-void CacheMissProcessor::getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates) {
+void CacheMissProcessor::getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int* usedBbCount, int waysCount, MultipleSetsSaver* totalStates) {
 
-    int bbpcpt;
+    //int bbpcpt;
     for (int i=0; i<icache->setCount(); i++){
-        bbpcpt=0;
+        //bbpcpt=0;
         for (auto c: pColl->graphOfSet(i)->CFGPs()) {
             for (auto bbp : *c->BBPs()){
                 if (bbp != nullptr) {
-                    bbpcpt++;
+                    //bbpcpt++;
                     CacheSetsSaver* sState = SAVEDP(bbp);
                     auto listSize = sState->getCacheSetCount();
                     mins[i] = min(mins[i],listSize);
@@ -606,18 +567,21 @@ void CacheMissProcessor::getStatsP(int *mins, int *maxs, float *moys, int* bbCou
                     if (listSize != 0){
                         moys[i] += listSize;
                         bbCount[i]++;
-                    } else {
-                        cout << "null("<< i <<") : " << *bbp << endl;
-                    }
+                        if (bbp->tags().count() > 0){
+                            usedBbCount[i]++;
+                        }
+                    } //else {
+                        //cout << "null("<< i <<") : " << *bbp << " from " << bbp->oldBB()->cfg()->name() << endl;
+                    //}
                     for (auto* s: *sState->getSavedCacheSets()){
                         totalStates->add(s,i);
                     }
                 }
             }
         }
-        cout << bbpcpt << ",";
+        //cout << bbpcpt << ",";
     }
-    cout << endl;
+    //cout << endl;
 }
 
 
@@ -628,22 +592,31 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     int maxs[waysCount];
     float moys[waysCount];
     int bbCount[waysCount];
+    int usedBbCount[waysCount];
     for (int i = 0; i < waysCount; i++){
         mins[i] = type_info<int>::max;
         maxs[i] = 0;
         moys[i] = 0;
         bbCount[i] = 0;
+        usedBbCount[i] = 0;
     }
 
     MultipleSetsSaver* totalStates = new MultipleSetsSaver;
     totalStates->setupMWS(icache->setCount(),icache->wayCount());
 
-    getStatsP(mins, maxs, moys, bbCount, waysCount, totalStates);
+    getStatsP(mins, maxs, moys, bbCount, usedBbCount, waysCount, totalStates);
 
     output << "\t\"bb_count\" : [";
     output << bbCount[0];
     for (int i = 1; i < waysCount; i++){
         output << "," << bbCount[i];
+    }
+    output << "],\n";
+
+    output << "\t\"used_bb_count\" : [";
+    output << usedBbCount[0];
+    for (int i = 1; i < waysCount; i++){
+        output << "," << usedBbCount[i];
     }
     output << "],\n";
 

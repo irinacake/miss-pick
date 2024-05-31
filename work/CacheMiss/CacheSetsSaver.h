@@ -45,8 +45,10 @@ public:
         return *this;
     }
 
-    void add(CacheSetState *stateToAdd) {
+    bool add(CacheSetState *stateToAdd) {
+        int precount = savedCacheSets.count();
         savedCacheSets.insert(stateToAdd->clone());
+        return precount != savedCacheSets.count();
         /*
         if (!(savedCacheSets.contains(stateToAdd))){
             cacheSetCount++;

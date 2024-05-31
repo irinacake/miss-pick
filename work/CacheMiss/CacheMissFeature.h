@@ -43,7 +43,7 @@ protected:
 	void makeStats(elm::io::Output &output);
 
 	void getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates);
-	void getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates);
+	void getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int* usedBbCount, int waysCount, MultipleSetsSaver* totalStates);
 
 private:
 	int exec_time;
