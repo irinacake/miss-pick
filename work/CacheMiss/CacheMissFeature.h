@@ -38,7 +38,6 @@ protected:
 	void initStateP();
 	void printStates();
 	void computeAnalysis(CFG *g, CacheSetState *initState, sys::StopWatch& mySW);
-	void computeAnalysisHeapless(CFG *g, CacheSetState *initState, sys::StopWatch& mySW);
 	void computeProjectedAnalysis(CacheSetState *initState, sys::StopWatch& mySW);
 	void makeStats(elm::io::Output &output);
 

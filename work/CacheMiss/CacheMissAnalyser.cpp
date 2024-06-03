@@ -70,7 +70,7 @@ void CacheMissProcessor::computeAnalysis(CFG *g, CacheSetState *initState, sys::
 
     int i = 0;
 
-    cout << "computing CacheMissProcessor" << endl;
+    //cout << "computing CacheMissProcessor" << endl;
     for (int set = 0; set < icache->setCount(); set++) {
         //cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
@@ -218,139 +218,6 @@ void CacheMissProcessor::computeAnalysis(CFG *g, CacheSetState *initState, sys::
         }
     }
     exit_value = 0;
-}
-
-
-void CacheMissProcessor::computeAnalysisHeapless(CFG *g, CacheSetState *initState, sys::StopWatch& mySW){
-    int currSet = 0;
-    int currTag = 0;
-
-    Vector<Pair<Block *,CacheSetState *>> todo;
-
-    int i = 0;
-    for (int set = 0; set < icache->setCount(); set++) {
-
-        DEBUG("computing new set : " << set << endl);
-
-
-        //todo.add(pair(g->entry(), initState->copy()));
-        // IS this a proper copy ?
-        todo.add(pair(g->entry(), initState->clone()));
-
-
-
-
-        while (!todo.isEmpty()){
-            i++;
-            if (i%1000000 == 0){
-                //cout << "set : " << set << endl;
-                if (mySW.currentDelay().mins() > 30){
-                    sys::System::exit(10000 + set);
-                }
-            }
-
-            auto curPair = todo.pop();
-            auto curBlock = curPair.fst;
-            auto curCacheSetState = curPair.snd;
-
-            DEBUG("\nTodo: " << curBlock << endl);
-            DEBUG("Initial State :" << endl);
-            DEBUG(curCacheSetState);
-
-            if (curBlock->isEntry()) {
-                DEBUG("is Entry block:" << endl);
-                for (auto e: curBlock->outEdges()){
-                    auto sink = e->sink();
-                    if(!sink->isBasic() || !SAVED(sink)->contains(curCacheSetState,set)){
-                        DEBUG("- Adding " << sink << endl);
-                        todo.add(pair(sink,curCacheSetState->clone()));
-                    }
-                }
-
-                delete(curCacheSetState);
-
-            } else if(curBlock->isExit()) {
-                DEBUG("is Exit block:" << endl);
-                for (auto caller: curBlock->cfg()->callers()){
-                    for (auto e: caller->outEdges()){
-                        auto sink = e->sink();
-                        if(!sink->isBasic() || !SAVED(sink)->contains(curCacheSetState,set)){
-                            DEBUG("- Adding " << sink << endl);
-                            todo.add(pair(sink,curCacheSetState->clone()));
-                        }
-                    }
-                }
-
-                delete(curCacheSetState);
-
-            } else if(curBlock->isSynth()) {
-                DEBUG("is Synth block:" << endl);
-                if ( curBlock->toSynth()->callee() != nullptr ){
-                    DEBUG("- Adding " << curBlock->toSynth()->callee()->entry() << endl);
-                    todo.add(pair(curBlock->toSynth()->callee()->entry(),curCacheSetState));
-                } else {
-                    for (auto e: curBlock->outEdges()){
-                        auto sink = e->sink();
-                        if(!sink->isBasic() || !SAVED(sink)->contains(curCacheSetState,set)){
-                            DEBUG("- Adding " << sink << endl);
-                            todo.add(pair(sink,curCacheSetState->clone()));
-                        }
-                    }
-                    delete(curCacheSetState);
-                }
-
-            } else if (curBlock->isBasic()) {
-                /// TODO I AM HERE
-
-                currTag = -1;
-
-                DEBUG("is Basic block:" << endl);
-                DEBUG("Before : " << **SAVED(curBlock) << endl);
-
-                CacheSetState* newState = curCacheSetState->clone();
-                SAVED(curBlock)->add(newState, set);
-
-                DEBUG("After : " << **SAVED(curBlock) << endl);
-
-                for (auto inst : *curBlock->toBasic()){
-                    DEBUG(icache->block(inst->address()) << endl);
-                    if (currTag != icache->block(inst->address())){ // TAG
-                        DEBUG(" - new tag" << endl;)
-                        currTag = icache->block(inst->address());
-                        if (set == icache->set(inst->address())){
-                            DEBUG("   - matches set" << endl;)
-                            curCacheSetState->update(icache->block(inst->address()));
-                        }
-                    }
-                }
-
-                DEBUG("Final State :" << endl);
-                SPEDEBUG(curCacheState->displayState();)
-
-                for (auto e: curBlock->outEdges()){
-                    auto sink = e->sink();
-                    DEBUG("Verifying exist (Basic) : " << sink << endl);
-                    if(!sink->isBasic() || !SAVED(sink)->contains(curCacheSetState,set)){
-                        DEBUG("- Adding " << sink << endl);
-                        todo.add(pair(sink,curCacheSetState->clone()));
-                    }
-                }
-                delete(curCacheSetState);
-            } else if (curBlock->isPhony()) {
-                DEBUG("is Phony block:" << endl);
-                for (auto e: curBlock->outEdges()){
-                    auto sink = e->sink();
-                    if(!sink->isBasic() || !SAVED(sink)->contains(curCacheSetState,set)){
-                        DEBUG("- Adding " << sink << endl);
-                        todo.add(pair(sink,curCacheSetState->clone()));
-                    }
-                }
-                delete(curCacheSetState);
-            } else {
-                ASSERTP(false,"Unexpected block type");
-            }
-        }
-    }
 }
 
 

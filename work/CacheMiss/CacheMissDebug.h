@@ -3,8 +3,8 @@
 #define OTAWA_CACHEMISS_CACHE_MISS_DEBUG_H
 
 #ifndef NDEBUG
-#define DEBUG(x) //cout << x
-#define DEBUGP(x) //cout << x
+#define DEBUG(x) cout << x
+#define DEBUGP(x) cout << x
 #define SPEDEBUG(x) //x
 #else
 #define DEBUG(x)
