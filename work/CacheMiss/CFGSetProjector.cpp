@@ -94,6 +94,8 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
     Vector<CFGP *> todoCfg;
     Vector<Pair<BBP *,Block *>> todo;
 
+    Vector<CFG *> todoMarkedCfg;
+
     // set by set loop
     for (int currSet=0; currSet < setCount; currSet++){
 
@@ -199,9 +201,24 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                 }
             }
         }
+
+        for (auto origcfg : *cfgColl){
+            cfgsP[currSet]->get(origcfg)->isInvolved();
+            if (cfgsP[currSet]->get(origcfg)->isInvolved()){
+                todoMarkedCfg.add(origcfg);
+            }
+        }
+        while(!todoMarkedCfg.isEmpty()){
+            auto currCfg = todoMarkedCfg.pop();
+            for (auto prevSynth: currCfg->callers()){
+                auto prevCfgp = cfgsP[currSet]->get(prevSynth->cfg());
+                if (!prevCfgp->isInvolved()){
+                    prevCfgp->setInvolved();
+                    todoMarkedCfg.add(prevSynth->cfg());
+                }
+            }
+        }
     }
-
-
 
 
     DEBUGP("CFG Projector - simplifying" << endl);

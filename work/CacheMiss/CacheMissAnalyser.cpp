@@ -412,7 +412,7 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
                 for (auto cs: callstack.exitCS){
                     DEBUG("- Adding exitCS item " << *cs << ", to :" << endl);
                     for (auto sink: callstack.caller->outEdges()){
-                        DEBUG("- - " << sink->oldBB());
+                        DEBUG("- - " << sink->oldBB() << endl);
                         todoItem itemToAdd;
                         itemToAdd.block = sink;
                         itemToAdd.cacheSetState = cs->clone();
@@ -608,6 +608,8 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
 
     getStatsP(mins, maxs, moys, bbCount, usedBbCount, waysCount, totalStates);
 
+    for (int i = 0; i < waysCount; i++){ if (mins[i] == type_info<int>::max){ mins[i] = 0; } }
+
     output << "\t\"bb_count\" : [";
     output << bbCount[0];
     for (int i = 1; i < waysCount; i++){
@@ -642,10 +644,10 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     output << "],\n";
 
     output << "\t\"state_moys\" : [";
-    moys[0] /= bbCount[0];
+    moys[0] /= max(bbCount[0],1);
     output << moys[0];
     for (int i = 1; i < waysCount; i++){
-        moys[i] /= bbCount[i];
+        moys[i] /= max(bbCount[i],1);
         output << "," << moys[i];
     }
     output << "],\n";
