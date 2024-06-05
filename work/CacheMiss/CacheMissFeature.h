@@ -5,6 +5,7 @@
 
 #include <otawa/prog/TextDecoder.h>
 #include <elm/sys/System.h>
+#include <elm/options.h>
 
 
 #include "CacheSetState.h"
@@ -20,6 +21,8 @@ using namespace otawa;
 
 
 
+extern p::id<bool> PROJECTION;
+
 extern p::feature CACHE_MISS_FEATURE;
 
 
@@ -32,12 +35,13 @@ protected:
 	void processAll(WorkSpace *ws) override;
 	void processCFG(WorkSpace *ws, CFG *cfg) override {}
     void dump(WorkSpace *ws, Output &out) override;
-	//void configure() override;
+	void configure(const PropList& props) override;
+
 
 	void initState();
 	void initStateP();
 	void printStates();
-	void computeAnalysis(CFG *g, CacheSetState *initState, sys::StopWatch& mySW);
+	void computeAnalysis(CacheSetState *initState, sys::StopWatch& mySW);
 	void computeProjectedAnalysis(CacheSetState *initState, sys::StopWatch& mySW);
 	void makeStats(elm::io::Output &output);
 
@@ -51,6 +55,7 @@ private:
 	ProjectedCFGColl* pColl;
 	CFG* maincfg;
 	int exit_value;
+	bool projection;
 };
 
 

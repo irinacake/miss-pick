@@ -8,11 +8,11 @@ test: $(OBJS)
 	@mkdir -p build
 	$(CXX) $(CXXFLAGS) -o build/$@ $^ $(LIBS)
 
-$(OBJDIR)/test.o: test.cpp MultipleSetsSaver.h
+$(OBJDIR)/test.o: test.cpp CacheMissFeature.h
 	@mkdir -p $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 	
-$(OBJDIR)/CacheMissAnalyser.o: CacheMissAnalyser.cpp MultipleSetsSaver.h CFGSetProjector.h
+$(OBJDIR)/CacheMissAnalyser.o: CacheMissAnalyser.cpp CacheMissFeature.h
 	@mkdir -p $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 

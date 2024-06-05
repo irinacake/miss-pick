@@ -51,16 +51,16 @@ public:
     }
 
 
-    bool contains(CacheSetState *stateToCheck, int set){
+    inline bool contains(CacheSetState *stateToCheck, int set){
         if ((savedSavers[set].contains(stateToCheck))){
             return true;
         } 
         return false;
     }
 
-    void add(CacheSetState *newState, int set) {
+    inline bool add(CacheSetState *newState, int set) {
         ASSERTP(set >= 0 && set < setCount, "In CacheSetState.add() : argument 'set', index out of bound.");
-        savedSavers[set].add(newState);
+        return savedSavers[set].add(newState);
         /*
         if (!(savedSavers[set].contains(newState))){
             DEBUG("Adding new state" << endl);
@@ -71,7 +71,7 @@ public:
         */
     }
 
-    CacheSetsSaver* getSaver(int set) {
+    inline CacheSetsSaver* getSaver(int set) {
         ASSERTP(set >= 0 && set < setCount, "In CacheSetState.add() : argument 'set', index out of bound.");
         return &savedSavers[set];
     }
