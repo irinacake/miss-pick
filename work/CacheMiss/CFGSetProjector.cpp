@@ -3,6 +3,24 @@
 #include "CacheMissDebug.h"
 
 
+/**
+ * @defgroup pcfg   Projected CFG (Control Flow Graph)
+ * 
+ * This module allows to represents programs as Projected Control Flow Graph (CFG),
+ * that is to say, a CFG (see otawa::cfg base class) that has been projected based on
+ * the cache set.
+ * The projected CFG Collection follows the same structure as the base CFG Collection
+ * albeit simplified to only provide what is needed. BBP (Projected Basic Blocks) and
+ * CFGP (Projected CFGs) have a reference to their associated non projected equivalent.
+ * 
+*/
+
+/**
+ * @class BBP;
+ * A node in the projected CFG. 
+ * @ingroup pcfg
+ */
+
 
 elm::io::Output &operator<<(elm::io::Output &output, const BBP &bbp) {
     output << "Projected BB : " << bbp._oldBB << endl;

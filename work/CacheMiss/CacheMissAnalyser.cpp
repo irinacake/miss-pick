@@ -59,10 +59,9 @@ struct callStack {
 
 
 void CacheMissProcessor::computeAnalysis(CacheSetState *initState, sys::StopWatch& mySW){
-    int currSet = 0;
-    int currTag = 0;
+    int currTag;
 
-    t::uint64 completedCfg = 0;
+    t::uint64 completedCfg;
 
 
     Vector<callStack> todo;
@@ -71,8 +70,10 @@ void CacheMissProcessor::computeAnalysis(CacheSetState *initState, sys::StopWatc
 
     //cout << "computing CacheMissProcessor" << endl;
     for (int set = 0; set < icache->setCount(); set++) {
-        //cout << "computing new set : " << set << endl;
+        cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
+        completedCfg = 0;
+        currTag = 0;
 
         todoItem initItem;
         initItem.block = maincfg->entry();
@@ -108,7 +109,7 @@ void CacheMissProcessor::computeAnalysis(CacheSetState *initState, sys::StopWatc
                         itemToAdd.cacheSetState = cs->clone();
                         todo.top().workingList.add(itemToAdd);
                     }
-                    //delete(cs);
+                    delete(cs);
                 }
                 if (callstack.caller != nullptr) {
                     DEBUG("Marked cfg" << endl);
@@ -129,14 +130,28 @@ void CacheMissProcessor::computeAnalysis(CacheSetState *initState, sys::StopWatc
 
             if (curItem.block->isEntry()) {
                 DEBUG("is Entry block:" << endl);
+                bool addition = false;
                 for (auto e: curItem.block->outEdges()){
                     auto sink = e->sink();
                     if(!sink->isBasic() || !SAVED(sink)->contains(curItem.cacheSetState,set)){
+                        addition = true;
                         DEBUG("- Adding " << sink << endl);
                         todoItem itemToAdd;
                         itemToAdd.block = sink;
                         itemToAdd.cacheSetState = curItem.cacheSetState->clone();
                         todo.top().workingList.add(itemToAdd);
+                    }
+                }
+                if (!addition){
+                    DEBUG("Not adding, bypass to exit" << endl);
+                    if ((todo.top().exitBypass == false) && (completedCfg & (1 << curItem.block->cfg()->index())) ) {
+                        auto exitbb = curItem.block->cfg()->exit();
+                        DEBUG("Exitbb found : " << exitbb->cfg() << endl);
+                        MultipleSetsSaver* sState = *SAVED(exitbb);
+                        for (auto* s: *sState->getSaver(set)->getSavedCacheSets()){
+                            todo.top().exitCS.add(s->clone());
+                        }
+                        todo.top().exitBypass = true;
                     }
                 }
 
@@ -156,7 +171,7 @@ void CacheMissProcessor::computeAnalysis(CacheSetState *initState, sys::StopWatc
                         auto exitbb = curItem.block->cfg()->exit();
                         DEBUG("Exitbb found : " << exitbb->cfg() << endl);
                         MultipleSetsSaver* sState = *SAVED(exitbb);
-                        for (auto* s: *sState->getSaver(currSet)->getSavedCacheSets()){
+                        for (auto* s: *sState->getSaver(set)->getSavedCacheSets()){
                             todo.top().exitCS.add(s->clone());
                         }
                         todo.top().exitBypass = true;
@@ -233,7 +248,7 @@ void CacheMissProcessor::computeAnalysis(CacheSetState *initState, sys::StopWatc
                         auto exitbb = curItem.block->cfg()->exit();
                         DEBUG("Exitbb found : " << exitbb->cfg() << endl);
                         MultipleSetsSaver* sState = *SAVED(exitbb);
-                        for (auto* s: *sState->getSaver(currSet)->getSavedCacheSets()){
+                        for (auto* s: *sState->getSaver(set)->getSavedCacheSets()){
                             todo.top().exitCS.add(s->clone());
                         }
                         todo.top().exitBypass = true;
@@ -286,7 +301,7 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
 
     //cout << "computing CacheMissProcessor" << endl;
     for (int set = 0; set < icache->setCount(); set++) {
-        //cout << "computing new set : " << set << endl;
+        cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
         t::uint64 completedCfg = 0;
@@ -322,7 +337,7 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
                         itemToAdd.cacheSetState = cs->clone();
                         todo.top().workingList.add(itemToAdd);
                     }
-                    //delete(cs);
+                    delete(cs);
                 }
                 if (callstack.caller != nullptr) {
                     DEBUG("Marked cfg" << endl);
@@ -459,13 +474,10 @@ void CacheMissProcessor::getStats(int *mins, int *maxs, float *moys, int* bbCoun
 
 void CacheMissProcessor::getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int* usedBbCount, int waysCount, MultipleSetsSaver* totalStates) {
 
-    //int bbpcpt;
     for (int i=0; i<icache->setCount(); i++){
-        //bbpcpt=0;
         for (auto c: pColl->graphOfSet(i)->CFGPs()) {
             for (auto bbp : *c->BBPs()){
                 if (bbp != nullptr) {
-                    //bbpcpt++;
                     CacheSetsSaver* sState = SAVEDP(bbp);
                     auto listSize = sState->getCacheSetCount();
                     mins[i] = min(mins[i],listSize);
@@ -476,9 +488,7 @@ void CacheMissProcessor::getStatsP(int *mins, int *maxs, float *moys, int* bbCou
                         if (bbp->tags().count() > 0){
                             usedBbCount[i]++;
                         }
-                    } //else {
-                        //cout << "null("<< i <<") : " << *bbp << " from " << bbp->oldBB()->cfg()->name() << endl;
-                    //}
+                    }
                     for (auto* s: *sState->getSavedCacheSets()){
                         totalStates->add(s,i);
                     }
