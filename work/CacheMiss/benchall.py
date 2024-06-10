@@ -52,11 +52,11 @@ for folder in folders:
                 print("\n----------------------------------------------------------")
                 for way in [4,8]:
                     for row in [32,256]:
-                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml --dump-for CacheMissProcessor --dump-to " + resultdir + task['name'] + "_FIFO_" + str(row) + "_" + str(way) + ".json", timeout)
+                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml --dump-for CacheMissProcessor --dump-to " + resultdir + task['name'] + "_FIFO_" + str(row) + "_" + str(way) + ".json -p ", timeout)
 
-                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml --dump-for CacheMissProcessor --dump-to " + resultdir + task['name'] + "_LRU_" + str(row) + "_" + str(way) + ".json", timeout)
+                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml --dump-for CacheMissProcessor --dump-to " + resultdir + task['name'] + "_LRU_" + str(row) + "_" + str(way) + ".json -p ", timeout)
 
-                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml --dump-for CacheMissProcessor --dump-to " + resultdir + task['name'] + "_PLRU_" + str(row) + "_" + str(way) + ".json", timeout)
+                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml --dump-for CacheMissProcessor --dump-to " + resultdir + task['name'] + "_PLRU_" + str(row) + "_" + str(way) + ".json -p ", timeout)
 
                 print("----------------------------------------------------------")
 

@@ -71,7 +71,7 @@ public:
     static inline void initAssociativity(int associativityBits){
         if (!isInit){
             logAssociativity = associativityBits;
-            associativity = pow(2,associativityBits);
+            associativity = (1 << associativityBits);
             isInit = true;
         }
     }

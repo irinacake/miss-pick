@@ -337,7 +337,7 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
                         itemToAdd.cacheSetState = cs->clone();
                         todo.top().workingList.add(itemToAdd);
                     }
-                    delete(cs);
+                    //delete(cs);
                 }
                 if (callstack.caller != nullptr) {
                     DEBUG("Marked cfg" << endl);
@@ -492,6 +492,7 @@ void CacheMissProcessor::getStatsP(int *mins, int *maxs, float *moys, int* bbCou
                     for (auto* s: *sState->getSavedCacheSets()){
                         totalStates->add(s,i);
                     }
+                    delete(sState);
                 }
             }
         }
@@ -577,6 +578,8 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
         output << "," << totalList[i];
     }
     output << "]\n";
+
+    delete(totalStates);
 }
 
 
@@ -677,7 +680,7 @@ void CacheMissProcessor::dump(WorkSpace *ws, Output &out) {
     out << "\t\"policy\" : \"" << icache->replacementPolicy() << "\",\n";
 
     out << "\t\"bsize\" : " << icache->blockCount() << ",\n";
-    out << "\t\"associativity\" : " << (int)pow(2,icache->wayBits()) << ",\n";
+    out << "\t\"associativity\" : " << (1 << icache->wayBits()) << ",\n";
     out << "\t\"set_count\" : " << icache->setCount() << ",\n";
 
     out << "\t\"exec_time\" : " << exec_time << ",\n";
