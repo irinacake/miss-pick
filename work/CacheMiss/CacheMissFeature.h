@@ -25,6 +25,8 @@ extern p::id<bool> PROJECTION;
 
 extern p::feature CACHE_MISS_FEATURE;
 
+extern p::id<CacheSetsSaver*> SAVEDP;
+
 
 class CacheMissProcessor: public CFGProcessor {
 public:

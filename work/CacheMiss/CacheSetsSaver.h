@@ -29,7 +29,7 @@ public:
     CacheSetsSaver(const CacheSetsSaver& other){ // Copy Constructor
         cacheSetCount = other.cacheSetCount;
         for (auto cs: other.savedCacheSets){
-            add(cs);
+            add(cs->clone());
         }
     }
 
@@ -40,14 +40,14 @@ public:
 
         cacheSetCount = other.cacheSetCount;
         for (auto cs: other.savedCacheSets){
-            add(cs);
+            add(cs->clone());
         }
         return *this;
     }
 
     bool add(CacheSetState *stateToAdd) {
         int precount = savedCacheSets.count();
-        savedCacheSets.insert(stateToAdd->clone());
+        savedCacheSets.insert(stateToAdd);
         return precount != savedCacheSets.count();
         /*
         if (!(savedCacheSets.contains(stateToAdd))){
