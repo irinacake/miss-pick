@@ -22,7 +22,7 @@ public:
 
     ~CacheSetsSaver(){
         for (auto cs: savedCacheSets){
-            delete(cs);
+            delete cs;
         }
     }
 

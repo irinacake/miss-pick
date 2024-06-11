@@ -581,7 +581,7 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     }
     output << "]\n";
 
-    delete(totalStates);
+    //delete(totalStates);
 }
 
 
@@ -668,6 +668,29 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
 void CacheMissProcessor::configure(const PropList& props) {
     CFGProcessor::configure(props);
     projection = PROJECTION(props);
+}
+
+void CacheMissProcessor::destroy(WorkSpace *ws) {
+    if (projection) {
+        for (int i=0; i<icache->setCount(); i++){
+            for (auto c: pColl->graphOfSet(i)->CFGPs()) {
+                for (auto bbp : *c->BBPs()){
+                    if (bbp != nullptr) {
+                        CacheSetsSaver* ss = SAVEDP(bbp);
+                        delete ss;
+                    }
+                }
+            }
+        }
+    } else {
+        for(auto v: cfgs().blocks()){
+            if(v->isBasic() || v->isExit()) {
+                MultipleSetsSaver* mss = SAVED(v);
+                delete mss;
+            }
+        }
+    }
+    CFGProcessor::destroy(ws);
 }
 
 

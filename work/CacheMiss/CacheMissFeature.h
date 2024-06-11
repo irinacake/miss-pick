@@ -36,6 +36,7 @@ public:
 protected:
 	void processAll(WorkSpace *ws) override;
 	void processCFG(WorkSpace *ws, CFG *cfg) override {}
+	void destroy(WorkSpace *ws) override;
     void dump(WorkSpace *ws, Output &out) override;
 	void configure(const PropList& props) override;
 
