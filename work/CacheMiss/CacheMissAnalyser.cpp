@@ -403,16 +403,16 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
                     DEBUG("is Basic block: (updating curCS) -> ");
 
                     for (auto inst : curItem.block->tags()){
-                        newState->update(inst);
+                        curItem.cacheSetState->update(inst);
                     }
 
-                    DEBUG(*newState << endl);
+                    DEBUG(*curItem.cacheSetState << endl);
 
                     for (auto sink: curItem.block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
                         todoItemP itemToAdd;
                         itemToAdd.block = sink;
-                        itemToAdd.cacheSetState = newState->clone();
+                        itemToAdd.cacheSetState = curItem.cacheSetState->clone();
                         todo.top().workingList.add(itemToAdd);
                     }
 
