@@ -284,6 +284,7 @@ void CacheMissProcessor::computeAnalysis(CacheSetState *initState, sys::StopWatc
 struct todoItemP {
     BBP* block;
     CacheSetState* cacheSetState;
+    // W - map des kicks
 };
 
 struct callStackP {

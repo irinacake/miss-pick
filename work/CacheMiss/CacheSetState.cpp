@@ -17,19 +17,6 @@ elm::io::Output &operator<<(elm::io::Output &output, const CacheSetState &state)
 }
 
 
-
-bool CacheSetStateLRU::equals(CacheSetState& other){
-    auto castedOther = static_cast<CacheSetStateLRU&>(other);
-
-    for (int i = 0; i < associativity; i++) {
-        if (savedState[i] != castedOther.savedState[i]){
-            return false;
-        }
-    }
-    return true;
-}
-
-
 int CacheSetStateLRU::update(int toAddTag){
 
     // position variable
@@ -81,18 +68,6 @@ int CacheSetStateLRU::compare(const CacheSetState& other) const {
 
 
 
-bool CacheSetStateFIFO::equals(CacheSetState& other){
-    auto castedOther = static_cast<CacheSetStateFIFO&>(other);
-    if (index != castedOther.index) {
-        return false;
-    }
-    for (int i = 0; i < associativity; i++) {
-        if (savedState[i] != castedOther.savedState[i]){
-            return false;
-        }
-    }
-    return true;
-}
 
 int CacheSetStateFIFO::update(int toAddTag){
 
@@ -138,19 +113,6 @@ int CacheSetStateFIFO::compare(const CacheSetState& other) const {
 
 
 
-
-bool CacheSetStatePLRU::equals(CacheSetState& other){
-    auto castedOther = static_cast<CacheSetStatePLRU&>(other);
-    if (accessBits != castedOther.accessBits) {
-        return false;
-    }
-    for (int i = 0; i < associativity; i++) {
-        if (savedState[i] != castedOther.savedState[i]){
-            return false;
-        }
-    }
-    return true;
-}
 
 int CacheSetStatePLRU::update(int toAddTag){
 
@@ -228,4 +190,24 @@ int CacheSetStatePLRU::compare(const CacheSetState& other) const {
         return savedState[i] - castedOther.savedState[i];
     }
     
+}
+
+
+
+
+
+
+int CacheSetStateWipeout::update(int toAddTag){
+    //W
+    return cs->update(toAddTag);
+}
+
+CacheSetState* CacheSetStateWipeout::clone(){
+    return new CacheSetStateWipeout(*this);
+}
+
+
+int CacheSetStateWipeout::compare(const CacheSetState& other) const {
+    auto castedOther = static_cast<const CacheSetStateWipeout&>(other);
+    return cs->compare(*castedOther.cs);
 }

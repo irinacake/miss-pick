@@ -76,10 +76,6 @@ public:
         }
     }
 
-
-
-    virtual bool equals(CacheSetState& other) = 0;
-
     virtual int update(int toAddTag) = 0;
 
     virtual CacheSetState* clone() = 0;
@@ -97,18 +93,6 @@ protected:
     static int associativity;
     static int logAssociativity;
 };
-
-
-namespace elm {
-  template<>
-  class Equiv<CacheSetState *> {
-  public:
-    static inline bool isEqual(CacheSetState *state1, CacheSetState *state2) {
-      return state1->equals(*state2);
-    }
-  };
-}
-
 
 
 
@@ -139,8 +123,6 @@ public:
         return *this;
     }
 
-    bool equals(CacheSetState& other) override;
-
     int update(int toAddTag) override;
 
     CacheSetState* clone() override;
@@ -168,8 +150,6 @@ public:
         index = other.index;
         return *this;
     }
-
-    bool equals(CacheSetState& other) override;
 
     int update(int toAddTag) override;
 
@@ -203,8 +183,6 @@ public:
         return *this;
     }
 
-    bool equals(CacheSetState& other) override;
-
     int update(int toAddTag) override;
 
     CacheSetState* clone() override;
@@ -214,6 +192,31 @@ private:
     t::uint64 accessBits;
 };
 
+
+class CacheSetStateWipeout: public CacheSetState {
+public:
+
+    CacheSetStateWipeout(): CacheSetState() {}
+
+    ~CacheSetStateWipeout() {}
+
+    CacheSetStateWipeout(const CacheSetStateWipeout& other): CacheSetState(other) {}
+
+    CacheSetStateWipeout& operator=(const CacheSetStateWipeout& other){ // Copy assignment
+        if (this == &other){ return *this; }
+        CacheSetState::operator=(other);
+        // ajouter W
+        return *this;
+    }
+
+    int update(int toAddTag) override;
+
+    CacheSetState* clone() override;
+
+    int compare(const CacheSetState& other) const override;
+private:
+    CacheSetState* cs;
+};
 
 
 
