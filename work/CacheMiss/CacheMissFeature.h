@@ -11,6 +11,7 @@
 #include "CacheSetState.h"
 #include "CacheSetsSaver.h"
 #include "MultipleSetsSaver.h"
+#include "AbstractCacheSetState.h"
 #include "CacheMissDebug.h"
 
 #include "CFGSetProjector.h"

@@ -194,20 +194,3 @@ int CacheSetStatePLRU::compare(const CacheSetState& other) const {
 
 
 
-
-
-
-int CacheSetStateWipeout::update(int toAddTag){
-    //W
-    return cs->update(toAddTag);
-}
-
-CacheSetState* CacheSetStateWipeout::clone(){
-    return new CacheSetStateWipeout(*this);
-}
-
-
-int CacheSetStateWipeout::compare(const CacheSetState& other) const {
-    auto castedOther = static_cast<const CacheSetStateWipeout&>(other);
-    return cs->compare(*castedOther.cs);
-}

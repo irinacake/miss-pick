@@ -85,6 +85,9 @@ public:
 
     friend elm::io::Output &operator<<(elm::io::Output &output, const CacheSetState &state);
 
+    inline static bool isInitialised(){
+        return isInit;
+    }
 private:
     static bool isInit;
     
@@ -105,6 +108,7 @@ class CacheSetStateComparator {
         return object1->compare(*object2);
     }
 };
+
 
 
 
@@ -192,31 +196,6 @@ private:
     t::uint64 accessBits;
 };
 
-
-class CacheSetStateWipeout: public CacheSetState {
-public:
-
-    CacheSetStateWipeout(): CacheSetState() {}
-
-    ~CacheSetStateWipeout() {}
-
-    CacheSetStateWipeout(const CacheSetStateWipeout& other): CacheSetState(other) {}
-
-    CacheSetStateWipeout& operator=(const CacheSetStateWipeout& other){ // Copy assignment
-        if (this == &other){ return *this; }
-        CacheSetState::operator=(other);
-        // ajouter W
-        return *this;
-    }
-
-    int update(int toAddTag) override;
-
-    CacheSetState* clone() override;
-
-    int compare(const CacheSetState& other) const override;
-private:
-    CacheSetState* cs;
-};
 
 
 
