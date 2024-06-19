@@ -9,6 +9,7 @@
 
 #include "CacheMissDebug.h"
 #include "CacheSetState.h"
+#include "AbstractCacheSetState.h"
 
 using namespace elm;
 using namespace otawa;
@@ -45,7 +46,7 @@ public:
         return *this;
     }
 
-    bool add(CacheSetState *stateToAdd) {
+    bool add(AbstractCacheSetState *stateToAdd) {
         int precount = savedCacheSets.count();
         savedCacheSets.insert(stateToAdd);
         return precount != savedCacheSets.count();
@@ -57,14 +58,14 @@ public:
         */
     }
 
-    inline avl::Set<CacheSetState*,CacheSetStateComparator>* getSavedCacheSets(){ // Iteratable
+    inline avl::Set<AbstractCacheSetState*,AbstractCacheSetStateComparator>* getSavedCacheSets(){ // Iteratable
         return &savedCacheSets;
     }
     inline int getCacheSetCount(){
         return savedCacheSets.count();
     }
 
-    bool contains(CacheSetState *stateToCheck){
+    bool contains(AbstractCacheSetState *stateToCheck){
         if ((savedCacheSets.contains(stateToCheck))){
             return true;
         } 
@@ -77,7 +78,7 @@ public:
 
 private:
     int cacheSetCount;
-    avl::Set<CacheSetState*,CacheSetStateComparator> savedCacheSets;
+    avl::Set<AbstractCacheSetState*,AbstractCacheSetStateComparator> savedCacheSets;
 };
 
 

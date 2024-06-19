@@ -51,14 +51,14 @@ public:
     }
 
 
-    inline bool contains(CacheSetState *stateToCheck, int set){
+    inline bool contains(AbstractCacheSetState *stateToCheck, int set){
         if ((savedSavers[set].contains(stateToCheck))){
             return true;
         } 
         return false;
     }
 
-    inline bool add(CacheSetState *newState, int set) {
+    inline bool add(AbstractCacheSetState *newState, int set) {
         ASSERTP(set >= 0 && set < setCount, "In CacheSetState.add() : argument 'set', index out of bound.");
         return savedSavers[set].add(newState);
         /*

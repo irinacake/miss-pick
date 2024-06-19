@@ -9,9 +9,9 @@
 
 
 #include "CacheSetState.h"
+#include "AbstractCacheSetState.h"
 #include "CacheSetsSaver.h"
 #include "MultipleSetsSaver.h"
-#include "AbstractCacheSetState.h"
 #include "CacheMissDebug.h"
 
 #include "CFGSetProjector.h"
@@ -45,8 +45,8 @@ protected:
 	void initState();
 	void initStateP();
 	void printStates();
-	void computeAnalysis(CacheSetState *initState, sys::StopWatch& mySW);
-	void computeProjectedAnalysis(CacheSetState *initState, sys::StopWatch& mySW);
+	void computeAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW);
+	void computeProjectedAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW);
 	void makeStats(elm::io::Output &output);
 
 	void getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates);
@@ -54,7 +54,7 @@ protected:
 
 private:
 	int exec_time;
-	CacheSetState* mycache;
+	AbstractCacheSetState* mycache;
 	const otawa::hard::Cache* icache;
 	ProjectedCFGColl* pColl;
 	CFG* maincfg;

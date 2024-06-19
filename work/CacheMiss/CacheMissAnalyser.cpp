@@ -58,7 +58,9 @@ struct callStack {
 };
 
 
-void CacheMissProcessor::computeAnalysis(CacheSetState *initState, sys::StopWatch& mySW){
+
+void CacheMissProcessor::computeAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW){
+/*
     int currTag;
 
     t::uint64 completedCfg;
@@ -277,25 +279,25 @@ void CacheMissProcessor::computeAnalysis(CacheSetState *initState, sys::StopWatc
         }
     }
     exit_value = 0;
+*/
 }
-
 
 
 struct todoItemP {
     BBP* block;
-    CacheSetState* cacheSetState;
+    AbstractCacheSetState* cacheSetState;
     // W - map des kicks
 };
 
 struct callStackP {
     BBP* caller;
-    Vector<CacheSetState*> exitCS;
+    Vector<AbstractCacheSetState*> exitCS;
     Vector<todoItemP> workingList;
     bool exitBypass = false;
 };
 
 
-void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys::StopWatch& mySW){
+void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW){
     Vector<callStackP> todo;
 
     int i = 0;
@@ -358,7 +360,7 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
 
             DEBUG("Before : " << **SAVEDP(curItem.block) << endl);
 
-            CacheSetState* newState = curItem.cacheSetState->clone();
+            AbstractCacheSetState* newState = curItem.cacheSetState->clone();
 
             if (SAVEDP(curItem.block)->add(newState)){
 
@@ -404,7 +406,7 @@ void CacheMissProcessor::computeProjectedAnalysis(CacheSetState *initState, sys:
                     DEBUG("is Basic block: (updating curCS) -> ");
 
                     for (auto inst : curItem.block->tags()){
-                        curItem.cacheSetState->update(inst);
+                        curItem.cacheSetState->update(inst,curItem.block->oldBB());
                     }
 
                     DEBUG(*curItem.cacheSetState << endl);
@@ -632,6 +634,8 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
     // must be called
     CacheSetState::initAssociativity(icache->wayBits());
 
+    mycache = new CompoundCacheSetState(icache->replacementPolicy());
+    /*
     switch (icache->replacementPolicy())
     {
     case otawa::hard::Cache::LRU:
@@ -646,6 +650,7 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
     default:
         break;
     }
+    */
 
 
     if (projection) {

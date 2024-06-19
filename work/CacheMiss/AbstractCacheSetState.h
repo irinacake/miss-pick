@@ -2,11 +2,12 @@
 #define OTAWA_CACHEMISS_ABS_CACHE_SET_H
 
 #include <elm/io.h>
+#include <elm/data/ListMap.h>
 #include <otawa/otawa.h>
+#include <otawa/hard/CacheConfiguration.h>
 
 #include "CacheMissDebug.h"
 #include "CacheSetState.h"
-#include "CFGSetProjector.h"
 
 
 using namespace elm;
@@ -17,7 +18,9 @@ class AbstractCacheSetState {
 public:
     //AbstractCacheSetState(otawa::hard::Cache::replace_policy_t policy);
 
-    virtual ~AbstractCacheSetState() = 0; // Destructor
+    virtual ~AbstractCacheSetState() { // Destructor
+
+    } 
 
     //AbstractCacheSetState(const AbstractCacheSetState& other);// Copy Constructor
 
@@ -32,7 +35,7 @@ public:
         CacheSetState::initAssociativity(associativityBits);
     }
 
-    virtual int update(int toAddTag, BBP* bbp) = 0;
+    virtual int update(int toAddTag, Block* b) = 0;
     virtual AbstractCacheSetState* clone() = 0;
     virtual int compare(const AbstractCacheSetState& other) const = 0;
 
@@ -104,7 +107,7 @@ public:
     }
 
 
-    int update(int toAddTag, BBP* bbp) override {
+    int update(int toAddTag, Block* b) override {
         return cs->update(toAddTag);
     }
 
@@ -146,12 +149,11 @@ public:
 
     ~CompoundCacheSetState() {
         delete cs;
-        //TODO : delete map
     }
 
     CompoundCacheSetState(const CompoundCacheSetState& other) {
         cs = other.cs->clone();
-        //TODO : clone map
+        W = ListMap<int,Block*>(other.W);
     }
     
     /*
@@ -172,7 +174,7 @@ public:
         return cs->getState();
     }
 
-    int update(int toAddTag, BBP* bbp) override {
+    int update(int toAddTag, Block* b) override {
         //TODO implement the new update functions
         return cs->update(toAddTag);
     }
@@ -183,13 +185,34 @@ public:
 
     int compare(const AbstractCacheSetState& other) const override {
         auto castedOther = static_cast<const CompoundCacheSetState&>(other);
-        //TODO : take MAP into account for the compare
-        return cs->compare(*castedOther.cs);
+        int cscmp = cs->compare(*castedOther.cs);
+        if (cscmp == 0) {
+            auto a = W.pairs().begin();
+            auto b = castedOther.W.pairs().begin();
+            for (; a != W.pairs().end() && b != castedOther.W.pairs().end(); ++a,++b) {
+                if ((*a).fst != (*b).fst){
+                    return (*a).fst - (*b).fst;
+                }
+                if ((*a).snd->index() != (*b).snd->index()){
+                    return (*a).snd->index() - (*b).snd->index();
+                }
+            }
+            if (a == W.pairs().end() && b == castedOther.W.pairs().end()){
+                return 0;
+            } else {
+                if (a != W.pairs().end()){
+                    return -1;
+                } else {
+                    return 1;
+                }
+            }
+        }
+        return cscmp;
     }
 
 private:
     CacheSetState* cs;
-    ListMap<int,BBP*> W;
+    ListMap<int,Block*> W;
 };
 
 
