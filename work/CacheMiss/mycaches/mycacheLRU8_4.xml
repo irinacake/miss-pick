@@ -2,7 +2,7 @@
 <cache-config>
 	<icache>
 		<block_bits>4</block_bits>
-		<way_bits>1</way_bits>
+		<way_bits>2</way_bits>
 		<row_bits>2</row_bits>
 		<replace>LRU</replace>
 		<!--<replace>NONE|OTHER||LRU|RANDOM|FIFO|PLRU</replace>-->

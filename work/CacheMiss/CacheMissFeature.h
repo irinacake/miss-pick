@@ -47,6 +47,7 @@ protected:
 	void printStates();
 	void printStatesP();
 	void kickedByP();
+	void missCalculatorP();
 	void computeAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW);
 	void computeProjectedAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW);
 	void makeStats(elm::io::Output &output);

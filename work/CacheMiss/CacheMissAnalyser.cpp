@@ -6,6 +6,9 @@
 p::id<MultipleSetsSaver*> SAVED("SAVED");
 p::id<CacheSetsSaver*> SAVEDP("SAVEDP");
 p::id<bool> PROJECTION("PROJECTION");
+p::id<ListSet<Block*>> KICKERS("KICKERS");
+p::id<int> MISSVALUE("MISSVALUE");
+
 
 void CacheMissProcessor::printStates() {
     for(auto v: cfgs().blocks()){
@@ -41,30 +44,75 @@ void CacheMissProcessor::kickedByP() {
                     for (auto t: bbp->tags()){
                         cout << " - " << t << endl;
                     }
-                    //cout << "- This bbp contains the following entries:" << endl;
+
                     auto css = *SAVEDP(bbp);
-                    /*
-                    for (auto acs: *css->getSavedCacheSets()){
-                        cout << " - ";
-                        acs->print(cout);
-                        cout << endl;
+                    
+                    if (bbp->tags().count() > 0){
+                        cout << "- This bbp contains the following entries:" << endl;
+                        for (auto acs: *css->getSavedCacheSets()){
+                            cout << " - ";
+                            acs->print(cout);
+                            cout << endl;
+                        }
                     }
-                    */
+                    
                     cout << "- And the kickers are:" << endl;
-                    ListSet<Block*> kickers;
                     for (auto acs: *css->getSavedCacheSets()){
                         auto ccss = static_cast<const CompoundCacheSetState&>(*acs);
                         auto w = ccss.getW();
                         for (auto p: w->pairs()){
                             if (bbp->tags().contains(p.fst)){
-                                kickers.add(p.snd);
+                                (*KICKERS(bbp)).add(p.snd);
                             }
                         }
                     }
-                    for (auto k: kickers){
+                    for (auto k: (*KICKERS(bbp))){
                         cout << " - " << k << endl;
                     }
-                    //cout << **SAVEDP(bbp) << endl;
+
+
+                    cout << "- AH, AM, NC:" << endl;
+                    bool ah = true;
+                    bool am = true;
+                    for (auto t: bbp->tags()) {
+                        for (auto acs: *css->getSavedCacheSets()){
+                            auto state = acs->getState();
+                            bool contained = false;
+                            for (int j=0; j < (1 << icache->wayBits()) && !contained ; j++){
+                                if (state[j] == t){
+                                    contained = true;
+                                }
+                            }
+                            if (contained){
+                                am = false;
+                            } else {
+                                ah = false;
+                            }
+                        }
+                        cout << " - tag " << t << " is ";
+                        if (ah) {
+                            cout << "Always Hit";
+                        } else if (am) {
+                            cout << "Always Miss";
+                        } else {
+                            cout << "Not Classified";
+                        }
+                        cout << endl;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+void CacheMissProcessor::missCalculatorP() {
+    for (int i=0; i<icache->setCount(); i++){
+        cout << "----------\nPrinting for set " << i << endl << endl;
+        for (auto c: pColl->graphOfSet(i)->CFGPs()) {
+            for (auto bbp : *c->BBPs()){
+                if (bbp != nullptr) {
+                    
                 }
             }
         }
