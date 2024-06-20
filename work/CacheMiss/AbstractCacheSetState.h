@@ -38,6 +38,7 @@ public:
     virtual int update(int toAddTag, Block* b) = 0;
     virtual AbstractCacheSetState* clone() = 0;
     virtual int compare(const AbstractCacheSetState& other) const = 0;
+    virtual void print(elm::io::Output &output) = 0;
 
 private:
 protected:
@@ -120,6 +121,10 @@ public:
         return cs->compare(*castedOther.cs);
     }
 
+    void print(elm::io::Output &output) override {
+        output << *cs;
+    }
+
 private:
     CacheSetState* cs;
 };
@@ -175,8 +180,23 @@ public:
     }
 
     int update(int toAddTag, Block* b) override {
-        //TODO implement the new update functions
-        return cs->update(toAddTag);
+        int k = cs->update(toAddTag);
+
+        //if (k == -1) {
+            //if (!W.hasKey(toAddTag)){
+
+            //} // else cache hit
+        //}
+        if (k != -1){
+            // someone was kicked, add it to W
+            W.put(k,b);// when optimising with merge,
+            //there needs to be a list initialisation here 
+            if (W.hasKey(toAddTag)){
+                // if the key is in the W, then it was kicked (by the instruction few lines above in a previous call), but is now loaded back in
+                W.remove(toAddTag);
+            }
+        }
+        return k;
     }
 
     AbstractCacheSetState* clone() override {
@@ -210,6 +230,18 @@ public:
         return cscmp;
     }
 
+    void print(elm::io::Output &output) override {
+        output << *cs;
+        output << "<";
+        for (auto a : W.pairs()){
+            output << "(" << a.fst << "," << a.snd << ")";
+        }
+        output << ">";
+    }
+
+    ListMap<int,Block*>* getW(){
+        return &W;
+    }
 private:
     CacheSetState* cs;
     ListMap<int,Block*> W;

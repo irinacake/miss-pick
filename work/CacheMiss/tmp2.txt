@@ -6,7 +6,7 @@
 	"bsize" : 32,
 	"associativity" : 4,
 	"set_count" : 8,
-	"exec_time" : 244,
+	"exec_time" : 237,
 	"exit_value" : 0,
 	"bb_count" : [9,10,9,9,9,8,8,9],
 	"used_bb_count" : [3,4,3,3,3,2,3,3],

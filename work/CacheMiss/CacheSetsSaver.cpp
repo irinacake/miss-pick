@@ -5,7 +5,8 @@ elm::io::Output &operator<<(elm::io::Output &output, const CacheSetsSaver &csSav
     // Redefinition of the << operator for the MultipleSetsSaver class
     output << "[ ";
     for (auto cs: csSaver.savedCacheSets){
-        output << *cs << " ";
+        cs->print(output);
+        output << " ";
     }
     output << "]";
     return output;

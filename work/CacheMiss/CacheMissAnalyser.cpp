@@ -1,5 +1,6 @@
 #include "CacheMissFeature.h"
 #include <otawa/cfg/Loop.h>
+#include <elm/data/ListSet.h>
 
 
 p::id<MultipleSetsSaver*> SAVED("SAVED");
@@ -12,6 +13,60 @@ void CacheMissProcessor::printStates() {
             cout << v << endl;
         } else if (v->isBasic()) {
             cout << v << **SAVED(v) << endl;
+        }
+    }
+}
+
+void CacheMissProcessor::printStatesP() {
+    for (int i=0; i<icache->setCount(); i++){
+        cout << "----------\nPrinting for set " << i << endl << endl;
+        for (auto c: pColl->graphOfSet(i)->CFGPs()) {
+            for (auto bbp : *c->BBPs()){
+                if (bbp != nullptr) {
+                    cout << "Printing for bbp: " << bbp->oldBB() << endl;
+                    cout << **SAVEDP(bbp) << endl;
+                }
+            }
+        }
+    }
+}
+
+void CacheMissProcessor::kickedByP() {
+    for (int i=0; i<icache->setCount(); i++){
+        cout << "----------\nPrinting for set " << i << endl << endl;
+        for (auto c: pColl->graphOfSet(i)->CFGPs()) {
+            for (auto bbp : *c->BBPs()){
+                if (bbp != nullptr) {
+                    cout << "--------\n- Printing for bbp: " << bbp->oldBB() << ". Tags are:"<< endl;
+                    for (auto t: bbp->tags()){
+                        cout << " - " << t << endl;
+                    }
+                    //cout << "- This bbp contains the following entries:" << endl;
+                    auto css = *SAVEDP(bbp);
+                    /*
+                    for (auto acs: *css->getSavedCacheSets()){
+                        cout << " - ";
+                        acs->print(cout);
+                        cout << endl;
+                    }
+                    */
+                    cout << "- And the kickers are:" << endl;
+                    ListSet<Block*> kickers;
+                    for (auto acs: *css->getSavedCacheSets()){
+                        auto ccss = static_cast<const CompoundCacheSetState&>(*acs);
+                        auto w = ccss.getW();
+                        for (auto p: w->pairs()){
+                            if (bbp->tags().contains(p.fst)){
+                                kickers.add(p.snd);
+                            }
+                        }
+                    }
+                    for (auto k: kickers){
+                        cout << " - " << k << endl;
+                    }
+                    //cout << **SAVEDP(bbp) << endl;
+                }
+            }
         }
     }
 }
@@ -668,6 +723,8 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
 
 
     exec_time = mySW.delay().micros();
+
+    kickedByP();
 
 }
 
