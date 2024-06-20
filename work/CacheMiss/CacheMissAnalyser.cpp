@@ -35,6 +35,9 @@ void CacheMissProcessor::printStatesP() {
 }
 
 void CacheMissProcessor::kickedByP() {
+    int ahcpt = 0;
+    int amcpt = 0;
+    int nccpt = 0;
     for (int i=0; i<icache->setCount(); i++){
         cout << "----------\nPrinting for set " << i << endl << endl;
         for (auto c: pColl->graphOfSet(i)->CFGPs()) {
@@ -47,6 +50,7 @@ void CacheMissProcessor::kickedByP() {
 
                     auto css = *SAVEDP(bbp);
                     
+                    /*
                     if (bbp->tags().count() > 0){
                         cout << "- This bbp contains the following entries:" << endl;
                         for (auto acs: *css->getSavedCacheSets()){
@@ -55,20 +59,7 @@ void CacheMissProcessor::kickedByP() {
                             cout << endl;
                         }
                     }
-                    
-                    cout << "- And the kickers are:" << endl;
-                    for (auto acs: *css->getSavedCacheSets()){
-                        auto ccss = static_cast<const CompoundCacheSetState&>(*acs);
-                        auto w = ccss.getW();
-                        for (auto p: w->pairs()){
-                            if (bbp->tags().contains(p.fst)){
-                                (*KICKERS(bbp)).add(p.snd);
-                            }
-                        }
-                    }
-                    for (auto k: (*KICKERS(bbp))){
-                        cout << " - " << k << endl;
-                    }
+                    */
 
 
                     cout << "- AH, AM, NC:" << endl;
@@ -88,21 +79,47 @@ void CacheMissProcessor::kickedByP() {
                             } else {
                                 ah = false;
                             }
+                            if (!am && !ah){
+                                break;
+                            }
                         }
                         cout << " - tag " << t << " is ";
                         if (ah) {
                             cout << "Always Hit";
+                            ahcpt++;
                         } else if (am) {
                             cout << "Always Miss";
+                            amcpt++;
                         } else {
                             cout << "Not Classified";
+                            nccpt++;
                         }
                         cout << endl;
                     }
+
+
+                    
+                    cout << "- And the kickers are:" << endl;
+                    for (auto acs: *css->getSavedCacheSets()){
+                        auto ccss = static_cast<const CompoundCacheSetState&>(*acs);
+                        auto w = ccss.getW();
+                        for (auto p: w->pairs()){
+                            if (bbp->tags().contains(p.fst)){
+                                (*KICKERS(bbp)).add(p.snd);
+                            }
+                        }
+                    }
+                    for (auto k: (*KICKERS(bbp))){
+                        cout << " - " << k << endl;
+                    }
+
                 }
             }
         }
     }
+    cout << "ahcpt: " << ahcpt << endl;
+    cout << "amcpt: " << amcpt << endl;
+    cout << "nccpt: " << nccpt << endl;
 }
 
 
