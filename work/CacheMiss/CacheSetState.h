@@ -10,6 +10,24 @@
 using namespace elm;
 using namespace otawa;
 
+
+/**
+ * @class CacheSetState
+ * 
+ * composition of AbstractCacheSetState
+ * 
+ * @ingroup cachemiss
+ */
+
+/**
+ * @fn
+ * 
+ * @param
+ * @return
+ * @warning
+ */
+
+
 class CacheSetState {
 
 public:

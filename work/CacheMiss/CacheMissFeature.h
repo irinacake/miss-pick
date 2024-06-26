@@ -6,7 +6,7 @@
 #include <otawa/prog/TextDecoder.h>
 #include <elm/sys/System.h>
 #include <elm/options.h>
-
+#include <elm/data/ListSet.h>
 
 #include "CacheSetState.h"
 #include "AbstractCacheSetState.h"
@@ -21,12 +21,27 @@ using namespace elm;
 using namespace otawa;
 
 
+/**
+ * @defgroup cachemiss  
+ * 
+ * This module allows for the computation of WCET values for Projected CFGs Collections
+ * with the Cache Miss Analysis Method.
+ * The main objectives are :
+ * - determine the possible Cache Set States when entering a Basic Block, which makes it possible to detect Always Hit and Always Miss situations
+ * - determine which Basic Block is responsible for the eviction of other Basic Block, which helps calculating tighter WCET values
+ * 
+*/
+
+
+
 
 extern p::id<bool> PROJECTION;
-
 extern p::feature CACHE_MISS_FEATURE;
-
+extern p::id<MultipleSetsSaver*> SAVED;
 extern p::id<CacheSetsSaver*> SAVEDP;
+extern p::id<ListSet<Block*>> KICKERS;
+extern p::id<int> MISSVALUE;
+
 
 
 class CacheMissProcessor: public CFGProcessor {
@@ -47,13 +62,12 @@ protected:
 	void printStates();
 	void printStatesP();
 	void kickedByP();
-	void missCalculatorP();
 	void computeAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW);
 	void computeProjectedAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW);
 	void makeStats(elm::io::Output &output);
 
-	void getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates);
-	void getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int* usedBbCount, int waysCount, MultipleSetsSaver* totalStates);
+	void getStats(int *mins, int *maxs, float *moys, int* bbCount, MultipleSetsSaver* totalStates);
+	void getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int* usedBbCount, MultipleSetsSaver* totalStates);
 
 private:
 	int exec_time;

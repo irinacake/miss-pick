@@ -1,6 +1,19 @@
 #include "CacheMissFeature.h"
 #include <otawa/cfg/Loop.h>
-#include <elm/data/ListSet.h>
+
+
+
+/**
+ * @class CacheMissProcessor
+ * Code processor for the WCET calculation by Cache Miss Analysis.
+ * This code processor sets up several properties:
+ * - SAVED / SAVEDP (based on projection) mapped on Block* / BBP* that provides the possible entry states of the cache
+ * - KICKERS mapped on BBP* (projection only) that provides a list of Block* that evicted this BBP* (regardless of how many tags it possesses)
+ * - MISSVALUE mapped on ??? (TODO) that provides how many misses does ??? has
+ * 
+ * @ingroup cachemiss
+ */
+
 
 
 p::id<MultipleSetsSaver*> SAVED("SAVED");
@@ -10,6 +23,16 @@ p::id<ListSet<Block*>> KICKERS("KICKERS");
 p::id<int> MISSVALUE("MISSVALUE");
 
 
+
+
+
+
+
+/**
+ * @fn printStates
+ * 
+ * @warning can only be executed for non-projection analysis
+ */
 void CacheMissProcessor::printStates() {
     for(auto v: cfgs().blocks()){
         if(v->isSynth()) {
@@ -20,6 +43,13 @@ void CacheMissProcessor::printStates() {
     }
 }
 
+
+
+/**
+ * @fn printStatesP
+ * 
+ * @warning can only be executed for projected analysis
+ */
 void CacheMissProcessor::printStatesP() {
     for (int i=0; i<icache->setCount(); i++){
         cout << "----------\nPrinting for set " << i << endl << endl;
@@ -34,6 +64,16 @@ void CacheMissProcessor::printStatesP() {
     }
 }
 
+
+
+
+
+/**
+ * @fn kickedByP
+ * Produces the data to store in the KICKERS property about kickers
+ * 
+ * @warning can only be executed for projected analysis
+ */
 void CacheMissProcessor::kickedByP() {
     int ahcpt = 0;
     int amcpt = 0;
@@ -63,11 +103,14 @@ void CacheMissProcessor::kickedByP() {
 
 
                     cout << "- AH, AM, NC:" << endl;
-                    bool ah = true;
-                    bool am = true;
                     for (auto t: bbp->tags()) {
+                        // both AH and AM are true by default
+                        bool ah = true;
+                        bool am = true;
                         for (auto acs: *css->getSavedCacheSets()){
                             auto state = acs->getState();
+
+                            // state is a basic int* type, there is no contains method, hence the manual search
                             bool contained = false;
                             for (int j=0; j < (1 << icache->wayBits()) && !contained ; j++){
                                 if (state[j] == t){
@@ -75,11 +118,14 @@ void CacheMissProcessor::kickedByP() {
                                 }
                             }
                             if (contained){
+                                // if it was contained, then it is no longer AM
                                 am = false;
                             } else {
+                                // if it was not, then it is no longer AH
                                 ah = false;
                             }
                             if (!am && !ah){
+                                // If both are false then it is already NC, no need to check more states
                                 break;
                             }
                         }
@@ -93,6 +139,7 @@ void CacheMissProcessor::kickedByP() {
                         } else {
                             cout << "Not Classified";
                             nccpt++;
+                            //TODO: NC estimation
                         }
                         cout << endl;
                     }
@@ -100,7 +147,9 @@ void CacheMissProcessor::kickedByP() {
 
                     
                     cout << "- And the kickers are:" << endl;
+                    // search in every entry states' W list to see if the tags of the current bbp have been kicked
                     for (auto acs: *css->getSavedCacheSets()){
+                        // static cast is mandatory
                         auto ccss = static_cast<const CompoundCacheSetState&>(*acs);
                         auto w = ccss.getW();
                         for (auto p: w->pairs()){
@@ -123,20 +172,12 @@ void CacheMissProcessor::kickedByP() {
 }
 
 
-void CacheMissProcessor::missCalculatorP() {
-    for (int i=0; i<icache->setCount(); i++){
-        cout << "----------\nPrinting for set " << i << endl << endl;
-        for (auto c: pColl->graphOfSet(i)->CFGPs()) {
-            for (auto bbp : *c->BBPs()){
-                if (bbp != nullptr) {
-                    
-                }
-            }
-        }
-    }
-}
-
-
+/**
+ * @fn initState
+ * Initialises the SAVED property
+ * 
+ * @warning can only be executed for non-projection analysis
+ */
 void CacheMissProcessor::initState() {
     for(auto v: cfgs().blocks()){
         if(v->isBasic() || v->isExit()) {
@@ -146,46 +187,56 @@ void CacheMissProcessor::initState() {
         }
     }
 }
+
+
+/**
+ * @fn initStateP
+ * Initialises the SAVEDP property
+ * 
+ * @warning can only be executed for projected analysis
+ */
 void CacheMissProcessor::initStateP() {
-    int cp;
     for (int i=0; i<icache->setCount(); i++){
-        cp = 0;
         for (auto c: pColl->graphOfSet(i)->CFGPs()) {
             for (auto bbp : *c->BBPs()){
                 if (bbp != nullptr) {
-                    cp++;
                     CacheSetsSaver* newSetsSaver = new CacheSetsSaver();
                     SAVEDP(bbp) = newSetsSaver;
                 }
             }
         }
-        //cout << "for i=" << i << ", cp=" << cp << endl;
     }
 }
 
 
-
+// Inner loop working list item for non-projection analysis
 struct todoItem {
     Block* block;
-    CacheSetState* cacheSetState;
+    AbstractCacheSetState* cacheSetState;
 };
 
+// Outer loop working list item for non-projection analysis 
 struct callStack {
     Block* caller;
-    Vector<CacheSetState*> exitCS;
+    Vector<AbstractCacheSetState*> exitCS;
     Vector<todoItem> workingList;
     bool exitBypass = false;
 };
 
 
 
+/**
+ * @fn computeAnalysis
+ * 
+ * @param initState AbstractCacheSetState* the initial state of the Cache
+ * @param mySW sys::StopWatch& elm timer to prevent executions from being too long
+ * @warning can only be executed for non-projection analysis
+ */
 void CacheMissProcessor::computeAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW){
-/*
+
+    // Please do check the computeProjectedAnalysis for more comments, the algorithm is similar
     int currTag;
-
     t::uint64 completedCfg;
-
-
     Vector<callStack> todo;
 
     int i = 0;
@@ -281,7 +332,7 @@ void CacheMissProcessor::computeAnalysis(AbstractCacheSetState *initState, sys::
 
             } else if(curItem.block->isExit()) {
                 DEBUG("is Exit block:" << endl);
-                CacheSetState* newState = curItem.cacheSetState->clone();
+                AbstractCacheSetState* newState = curItem.cacheSetState->clone();
                 if (SAVED(curItem.block)->add(newState, set)) {
                     if (todo.top().caller != nullptr){
                         DEBUG("- Adding "<< *curItem.cacheSetState << " to exitCS" << endl);
@@ -333,7 +384,7 @@ void CacheMissProcessor::computeAnalysis(AbstractCacheSetState *initState, sys::
                 DEBUG("is Basic block:" << endl);
                 DEBUG("Before : " << **SAVED(curItem.block) << endl);
 
-                CacheSetState* newState = curItem.cacheSetState->clone();
+                AbstractCacheSetState* newState = curItem.cacheSetState->clone();
                 if (SAVED(curItem.block)->add(newState, set)){
 
                     DEBUG("After : " << **SAVED(curItem.block) << endl);
@@ -345,7 +396,7 @@ void CacheMissProcessor::computeAnalysis(AbstractCacheSetState *initState, sys::
                             currTag = icache->block(inst->address());
                             if (set == icache->set(inst->address())){
                                 DEBUG("   - matches set" << endl;)
-                                curItem.cacheSetState->update(icache->block(inst->address()));
+                                curItem.cacheSetState->update(icache->block(inst->address()),curItem.block);
                             }
                         }
                     }
@@ -399,42 +450,55 @@ void CacheMissProcessor::computeAnalysis(AbstractCacheSetState *initState, sys::
         }
     }
     exit_value = 0;
-*/
 }
 
 
+// Inner loop working list item for projected analysis
 struct todoItemP {
-    BBP* block;
-    AbstractCacheSetState* cacheSetState;
-    // W - map des kicks
+    BBP* block; // current BBP to analyse
+    AbstractCacheSetState* cacheSetState; // associated cache state
 };
 
+// Outer loop working list item for projected analysis
 struct callStackP {
-    BBP* caller;
-    Vector<AbstractCacheSetState*> exitCS;
-    Vector<todoItemP> workingList;
-    bool exitBypass = false;
+    BBP* caller; // BBP responsible for the cfg call
+    Vector<AbstractCacheSetState*> exitCS; // list of CS to add to the caller's successors once the current cfg is done
+    Vector<todoItemP> workingList; // inner loop working list
+    bool exitBypass = false; // shared bool to prevent multiple identical bypasses to exit
 };
 
 
+
+/**
+ * @fn computeProjectedAnalysis
+ * 
+ * @param initState AbstractCacheSetState* the initial state of the Cache
+ * @param mySW sys::StopWatch& elm timer to prevent executions from being too long
+ * @warning can only be executed for projected analysis
+ */
 void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW){
     Vector<callStackP> todo;
 
     int i = 0;
 
-    //cout << "computing CacheMissProcessor" << endl;
+    exit_value = 0;
     for (int set = 0; set < icache->setCount(); set++) {
         cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
+        // bitfield to mark whether a cfg has been entirely completed or not
+        // caps the maximum amount of cfgs to 64
         t::uint64 completedCfg = 0;
 
+        // if there are exactly 0 involved blocks for the current set in the CFG, the projection will have marked the task CFG as nullptr, and it is safe to skip to the next set 
+        if (pColl->graphOfSet(set)->get(maincfg) == nullptr) { continue; }
+        
+        // create the first inner item
         todoItemP initItem;
-        if (pColl->graphOfSet(set)->get(maincfg) == nullptr)
-            continue;
         initItem.block = pColl->graphOfSet(set)->get(maincfg)->entry();
         initItem.cacheSetState = initState->clone();
 
+        // create the first outer item, with nullptr has a caller (stop condition)
         callStackP initCallStack;
         initCallStack.caller = nullptr;
         initCallStack.workingList.add(initItem);
@@ -442,15 +506,18 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
         todo.add(initCallStack);
 
         while (!todo.isEmpty()){
+            // prevent the analysis from being too long (safety measure). The usage of i is to prevent the call to mySW every iteration of the loop
             i++;
             if (i%1000000 == 0 && mySW.currentDelay().mins() > 30){
                 exit_value = 1 + set;
                 break;
             }
 
+            // if the inner WL is empty, then the current CFG is done and the states in the exitCS have to be added to the successors of the caller
             if (todo.top().workingList.isEmpty()){
                 DEBUG("\nCurrent callStack is done:" << endl);
                 auto callstack = todo.pop();
+                // Due to the "completedCfg" bitfield, the maincfg will never be able to add CS to the exitCS, and this loop will not be executed
                 for (auto cs: callstack.exitCS){
                     DEBUG("- Adding exitCS item " << *cs << ", to :" << endl);
                     for (auto sink: callstack.caller->outEdges()){
@@ -460,33 +527,31 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         itemToAdd.cacheSetState = cs->clone();
                         todo.top().workingList.add(itemToAdd);
                     }
-                    //delete cs;
                 }
+                // prevent bad access for the maincfg
                 if (callstack.caller != nullptr) {
                     DEBUG("Marked cfg" << endl);
                     completedCfg = completedCfg | (1 << callstack.caller->oldBB()->toSynth()->callee()->index());
                 }
+                // skip to the next outer WL item
                 continue;
             }
 
             auto curItem = todo.top().workingList.pop();
             
-
             DEBUG("\nTodo: " << curItem.block->oldBB() << endl);
             DEBUG("From CFG: " << curItem.block->oldBB()->cfg() << endl);
             DEBUG("Initial State :" << endl);
             DEBUG(*curItem.cacheSetState << endl);
 
-
             DEBUG("Before : " << **SAVEDP(curItem.block) << endl);
-
+            // the curItem.cacheSetState is the state that gets updated, so a clone must be created in order to add it to the curItem.block's CSSaver
             AbstractCacheSetState* newState = curItem.cacheSetState->clone();
-
             if (SAVEDP(curItem.block)->add(newState)){
-
                 DEBUG("After : " << **SAVEDP(curItem.block) << endl);
 
                 if (curItem.block->oldBB()->isEntry()) {
+                    // for entry blocks, simply add the successors
                     DEBUG("is Entry block:" << endl);
                     for (auto sink: curItem.block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
@@ -496,7 +561,8 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         todo.top().workingList.add(itemToAdd);
                     }
 
-                } else if(curItem.block->oldBB()->isExit()) {
+                } else if (curItem.block->oldBB()->isExit()) {
+                    // for exit blocks, forward the newly created state to the exitCS, unless the current cfg is the maincfg
                     DEBUG("is Exit block:" << endl);
                     if (todo.top().caller != nullptr){
                         DEBUG("- Adding "<< *newState << " to exitCS" << endl);
@@ -504,7 +570,8 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                     }
                     
 
-                } else if(curItem.block->oldBB()->isSynth()) {
+                } else if (curItem.block->oldBB()->isSynth()) {
+                    // for synth blocks, create a new outer WL item which will "pause" the exploration of the current cfg
                     DEBUG("is Synth block:" << endl);
                     
                     if ( curItem.block->toSynth()->callee() != nullptr ){
@@ -523,6 +590,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                     //}
 
                 } else if (curItem.block->oldBB()->isBasic()) {
+                    // for basic blocks, update the curItem.cacheSetState with the curItem.block's tags, and add its successors
                     DEBUG("is Basic block: (updating curCS) -> ");
 
                     for (auto inst : curItem.block->tags()){
@@ -540,6 +608,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                     }
 
                 } else if (curItem.block->oldBB()->isPhony()) {
+                    // for phony blocks, simply add the successors
                     DEBUG("is Phony block:" << endl);
                     for (auto sink: curItem.block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
@@ -550,13 +619,18 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                     }
 
                 } else if (curItem.block->oldBB()->isUnknown()) {
+                    // Unknown blocks should ideally generate "TOP" (undefined behaviour)
                 } else {
                     ASSERTP(false,"Unexpected block type");
                 }
             } else {
+                // if the newly cloned state couldn't be added, immediately delete it, and attempt a bypass to exit if the conditions are met
                 delete newState;
                 DEBUG("Not adding, bypass to exit" << endl);
+                // a bypass can only be executed once per cfg (-> once per outer WL item), but only if said cfg has been entirely explored at least once
                 if ((todo.top().exitBypass == false) && (completedCfg & (1 << curItem.block->oldBB()->cfg()->index())) ) {
+                    // a disgusting instruction to fetch the exit BBP of the current projected CFG through the regular CFG, because that information is not stored inside a projected CFG (yet?)
+                    // Once the exit BBP is found, add the content of its CSSaver to the exitCS
                     auto exitbb = pColl->graphOfSet(set)->get(curItem.block->oldBB()->cfg())->get(curItem.block->oldBB()->cfg()->exit()->index());
                     DEBUG("Exitbb found : " << exitbb->oldBB()->cfg() << endl);
                     CacheSetsSaver* sState = SAVEDP(exitbb);
@@ -566,23 +640,36 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                     todo.top().exitBypass = true;
                 }
             }
-
+            // it is safe to delete the curItem.cacheSetState because only clones have been stored or passed to successors
             delete curItem.cacheSetState;
         }
     }
-    exit_value = 0;
     cout << "computing done" << endl;
 }
 
 
 
-void CacheMissProcessor::getStats(int *mins, int *maxs, float *moys, int* bbCount, int waysCount, MultipleSetsSaver* totalStates) {
+
+
+
+/**
+ * @fn getStats
+ * Called by makeStats to gather data for non-projection analysis
+ * 
+ * @param mins int* (table) in which to store the minimum entry states based on set
+ * @param maxs int* (table) in which to store the maximum entry states based on set
+ * @param moys float* (table) in which to store the average entry states based on set
+ * @param bbCount int* (table) in which to store the total number of Block in the CFG based on set
+ * @param totalStates MultipleSetsSaver* used to gather all existing entry states while disregarding duplicates
+ * @warning can only be executed for non-projection analysis 
+ */
+void CacheMissProcessor::getStats(int *mins, int *maxs, float *moys, int* bbCount, MultipleSetsSaver* totalStates) {
     for(auto v: cfgs().blocks()){
         if(v->isBasic() || v->isExit()) {
             MultipleSetsSaver* sState = *SAVED(v);
             int* listSizes = sState->getSaversSizes();
             
-            for (int i = 0; i < waysCount; i++){
+            for (int i = 0; i < icache->setCount(); i++){
                 mins[i] = min(mins[i],listSizes[i]);
                 maxs[i] = max(maxs[i],listSizes[i]);
                 if (listSizes[i] != 0){
@@ -597,7 +684,20 @@ void CacheMissProcessor::getStats(int *mins, int *maxs, float *moys, int* bbCoun
     }
 }
 
-void CacheMissProcessor::getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int* usedBbCount, int waysCount, MultipleSetsSaver* totalStates) {
+
+/**
+ * @fn getStatsP
+ * Called by makeStats to gather data for projected analysis
+ * 
+ * @param mins int* (table) in which to store the minimum entry states based on set
+ * @param maxs int* (table) in which to store the maximum entry states based on set
+ * @param moys float* (table) in which to store the average entry states based on set
+ * @param bbCount int* (table) in which to store the total number of Block in the CFG based on set
+ * @param usedBbCount int* (table) in which to store the number of actually involved BBP in the CFGP based on set
+ * @param totalStates MultipleSetsSaver* used to gather all existing entry states while disregarding duplicates
+ * @warning can only be executed for projected analysis 
+ */
+void CacheMissProcessor::getStatsP(int *mins, int *maxs, float *moys, int* bbCount, int* usedBbCount, MultipleSetsSaver* totalStates) {
 
     for (int i=0; i<icache->setCount(); i++){
         for (auto c: pColl->graphOfSet(i)->CFGPs()) {
@@ -628,14 +728,21 @@ void CacheMissProcessor::getStatsP(int *mins, int *maxs, float *moys, int* bbCou
 
 
 
+
+/**
+ * @fn makeStats
+ * Produces stats based on the results of the computeAnalysis functions
+ * 
+ * @param output elm::io::Output&
+ */
 void CacheMissProcessor::makeStats(elm::io::Output &output) {
-    int waysCount = icache->setCount();
-    int mins[waysCount];
-    int maxs[waysCount];
-    float moys[waysCount];
-    int bbCount[waysCount];
-    int usedBbCount[waysCount];
-    for (int i = 0; i < waysCount; i++){
+    int nbSets = icache->setCount();
+    int mins[nbSets];
+    int maxs[nbSets];
+    float moys[nbSets];
+    int bbCount[nbSets];
+    int usedBbCount[nbSets];
+    for (int i = 0; i < nbSets; i++){
         mins[i] = type_info<int>::max;
         maxs[i] = 0;
         moys[i] = 0;
@@ -647,23 +754,23 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     totalStates->setupMWS(icache->setCount(),icache->wayCount());
 
     if (projection) {
-        getStatsP(mins, maxs, moys, bbCount, usedBbCount, waysCount, totalStates);
+        getStatsP(mins, maxs, moys, bbCount, usedBbCount, totalStates);
     } else {
-        getStats(mins, maxs, moys, bbCount, waysCount, totalStates);
+        getStats(mins, maxs, moys, bbCount, totalStates);
     }
 
-    for (int i = 0; i < waysCount; i++){ if (mins[i] == type_info<int>::max){ mins[i] = 0; } }
+    for (int i = 0; i < nbSets; i++){ if (mins[i] == type_info<int>::max){ mins[i] = 0; } }
 
     output << "\t\"bb_count\" : [";
     output << bbCount[0];
-    for (int i = 1; i < waysCount; i++){
+    for (int i = 1; i < nbSets; i++){
         output << "," << bbCount[i];
     }
     output << "],\n";
 
     output << "\t\"used_bb_count\" : [";
     output << usedBbCount[0];
-    for (int i = 1; i < waysCount; i++){
+    for (int i = 1; i < nbSets; i++){
         output << "," << usedBbCount[i];
     }
     output << "],\n";
@@ -675,14 +782,14 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
 
     output << "\t\"state_mins\" : [";
     output << mins[0];
-    for (int i = 1; i < waysCount; i++){
+    for (int i = 1; i < nbSets; i++){
         output << "," << mins[i];
     }
     output << "],\n";
 
     output << "\t\"state_maxs\" : [";
     output << maxs[0];
-    for (int i = 1; i < waysCount; i++){
+    for (int i = 1; i < nbSets; i++){
         output << "," << maxs[i];
     }
     output << "],\n";
@@ -690,7 +797,7 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     output << "\t\"state_moys\" : [";
     moys[0] /= max(bbCount[0],1);
     output << moys[0];
-    for (int i = 1; i < waysCount; i++){
+    for (int i = 1; i < nbSets; i++){
         moys[i] /= max(bbCount[i],1);
         output << "," << moys[i];
     }
@@ -699,7 +806,7 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     output << "\t\"state_total\" : [";
     auto totalList = totalStates->getSaversSizes();
     output << totalList[0];
-    for (int i = 1; i < waysCount; i++){
+    for (int i = 1; i < nbSets; i++){
         output << "," << totalList[i];
     }
     output << "]\n";
@@ -712,7 +819,6 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
 
 
 p::feature CACHE_MISS_FEATURE("otawa::hard::CACHE_MISS_FEATURE", p::make<CacheMissProcessor>());
-
 
 CacheMissProcessor::CacheMissProcessor(): CFGProcessor(reg) {}
 
@@ -733,67 +839,43 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
     maincfg = taskCFG();
     icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
 
-
     // Projected data
     pColl = CFG_SET_PROJECTOR_FEATURE.get(workspace());
 
-    //cout << a << endl;
-    //auto a = pColl->graphOfSet(3);
-    //cout << "inside cache miss, printing set 3 : \n" << *a << endl;
-
-    //auto b = a->entry();
-    //cout << "\n\n\n printing entry cfg of set 3 :\n" << *b << endl;
-
-    //auto c = b->entry();
-    //cout << "\n\n\n printing entry BBP of entry cfg of set 3 :\n" << *c << endl;
-
-
-
+    // Timer start
     mySW.start();
 
-    // must be called
+    // Associativity initialisation (must be called once)
     CacheSetState::initAssociativity(icache->wayBits());
 
-    mycache = new CompoundCacheSetState(icache->replacementPolicy());
-    /*
-    switch (icache->replacementPolicy())
-    {
-    case otawa::hard::Cache::LRU:
-        mycache = new CacheSetStateLRU();
-        break;
-    case otawa::hard::Cache::FIFO:
-        mycache = new CacheSetStateFIFO();
-        break;
-    case otawa::hard::Cache::PLRU:
-        mycache = new CacheSetStatePLRU();
-        break;
-    default:
-        break;
-    }
-    */
-
-
+    // Non-projection is not (yet?) compatible with compoundStates?
     if (projection) {
+        mycache = new CompoundCacheSetState(icache->replacementPolicy());
         initStateP();
         computeProjectedAnalysis(mycache, mySW);
     } else {
+        mycache = new ConcreteCacheSetState(icache->replacementPolicy());
         initState();
         computeAnalysis(mycache, mySW);
     }
 
-    //printStates();
 
-
+    // Computation is over, stop the timer
     mySW.stop();
-
-
     exec_time = mySW.delay().micros();
 
-    kickedByP();
+
+    if (projection) {
+        kickedByP();
+    } else {
+        // Non-projection does not have a kick analysis function
+    }
+    
 
 }
 
 void CacheMissProcessor::configure(const PropList& props) {
+    // Retrieve the "-p" argument value from the CL
     CFGProcessor::configure(props);
     projection = PROJECTION(props);
 }
@@ -824,15 +906,13 @@ void CacheMissProcessor::destroy(WorkSpace *ws) {
 
 void CacheMissProcessor::dump(WorkSpace *ws, Output &out) {
 
-    auto icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
-
     out << "{\n";
-    out << "\t\"file\" : \"" << workspace()->process()->program()->name() << "\",\n";  //get name of the input file
-    out << "\t\"projection\" : \"" << projection << "\",\n";  //get name of the input file
-    out << "\t\"task\" : \"" << taskCFG() << "\",\n";
+    out << "\t\"file\" : \"" << workspace()->process()->program()->name() << "\",\n";  // name of the input file
+    out << "\t\"projection\" : \"" << projection << "\",\n";
+    out << "\t\"task\" : \"" << taskCFG() << "\",\n"; // analysed task
     out << "\t\"policy\" : \"" << icache->replacementPolicy() << "\",\n";
 
-    out << "\t\"bsize\" : " << icache->blockCount() << ",\n";
+    //out << "\t\"bsize\" : " << icache->blockCount() << ",\n";
     out << "\t\"associativity\" : " << (1 << icache->wayBits()) << ",\n";
     out << "\t\"set_count\" : " << icache->setCount() << ",\n";
 

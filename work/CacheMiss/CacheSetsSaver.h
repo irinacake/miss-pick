@@ -14,6 +14,22 @@
 using namespace elm;
 using namespace otawa;
 
+
+/**
+ * @class
+ * 
+ * @ingroup cachemiss
+ */
+
+/**
+ * @fn
+ * 
+ * @param
+ * @return
+ * @warning
+ */
+
+
 class CacheSetsSaver {
 
 public:
