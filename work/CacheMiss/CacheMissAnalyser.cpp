@@ -182,7 +182,7 @@ void CacheMissProcessor::initState() {
     for(auto v: cfgs().blocks()){
         if(v->isBasic() || v->isExit()) {
             MultipleSetsSaver* newSetsSaver = new MultipleSetsSaver;
-            newSetsSaver->setupMWS(icache->setCount(),icache->wayCount());
+            newSetsSaver->setupMSS(icache->setCount(),icache->wayCount());
             SAVED(v) = newSetsSaver;
         }
     }
@@ -751,7 +751,7 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     }
 
     MultipleSetsSaver* totalStates = new MultipleSetsSaver;
-    totalStates->setupMWS(icache->setCount(),icache->wayCount());
+    totalStates->setupMSS(icache->setCount(),icache->wayCount());
 
     if (projection) {
         getStatsP(mins, maxs, moys, bbCount, usedBbCount, totalStates);

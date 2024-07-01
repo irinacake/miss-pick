@@ -20,6 +20,27 @@
  * A node in the projected CFG. 
  * @ingroup pcfg
  */
+/**
+ * @class BBPSynth;
+ * A synthetic node in the projected CFG. 
+ * @ingroup pcfg
+ */
+/**
+ * @class CFGP;
+ * A projected CFG in the projected collection. 
+ * @ingroup pcfg
+ */
+/**
+ * @class CFGCollectionP;
+ * A collection of projected CFG. 
+ * @ingroup pcfg
+ */
+/**
+ * @class ProjectedCFGColl;
+ * The code processor class interface, which allows 
+ * the user to access the projected CFG collection
+ * @ingroup pcfg
+ */
 
 
 elm::io::Output &operator<<(elm::io::Output &output, const BBP &bbp) {
@@ -73,6 +94,18 @@ elm::io::Output &operator<<(elm::io::Output &output, const CFGCollectionP &collP
 p::interfaced_feature<ProjectedCFGColl> CFG_SET_PROJECTOR_FEATURE("CFG_SET_PROJECTOR_FEATURE", p::make<CfgSetProjectorProcessor>());
 
 
+
+/**
+ * @class CfgSetProjectorProcessor
+ * This processor is used to tranform the CFG of @ref COLLECTED_CFG_FEATURE into
+ * a set of Projected CFGs
+ *
+ * @par Provided Features
+ * @ref CFG_SET_PROJECTOR_FEATURE
+ *
+ * @ingroup pcfg
+ */
+
 CfgSetProjectorProcessor::CfgSetProjectorProcessor(): CFGProcessor(reg) {
 }
 
@@ -87,6 +120,14 @@ p::declare CfgSetProjectorProcessor::reg = p::init("CfgSetProjectorProcessor", V
 
 
 
+/**
+ * @fn belongsTo
+ * Checks whether a given Block* belongs to the given set or not
+ * 
+ * @param bb Block* the basic block to test
+ * @param set int the set
+ * @return true if it does, false if it does not
+ */
 bool CfgSetProjectorProcessor::belongsTo(Block* bb, int set) {
     for (auto inst : *bb->toBasic()){
         if (set == icache->set(inst->address())){
@@ -100,10 +141,8 @@ void CfgSetProjectorProcessor::setup(WorkSpace *ws){
     cfgColl = COLLECTED_CFG_FEATURE.get(workspace());
     icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
     entryCfg = cfgColl->entry();
-
     setCount = icache->setCount();
     cfgsP.allocate(setCount);
-
 }
 
 void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
@@ -111,15 +150,11 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
     
     Vector<CFGP *> todoCfg;
     Vector<Pair<BBP *,Block *>> todo;
-
     Vector<CFG *> todoMarkedCfg;
 
-    // set by set loop
+    // Projection work loop, set by set
     for (int currSet=0; currSet < setCount; currSet++){
-
-        //cout << "\n\n\n------------\nprocessing set : " << currSet << "\n------------" << endl;
         DEBUGP("\n\n\n------------\nprocessing set : " << currSet << "\n------------" << endl);
-        //CFGCollectionP collP;
         cfgsP[currSet] = new CFGCollectionP(currSet, cfgColl);
 
 
@@ -163,10 +198,6 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                     }
                 } else {
                     DEBUGP("\t\t else" << endl);
-                    //if (bb->isSynth() && !SYNTHCALL(bb->toSynth()->callee())){
-                    //    SYNTHCALL(bb->toSynth()->callee()) = true;
-                    //    todoCfg.add(bb->toSynth()->callee());
-                    //}
                     
                     if (bb->isSynth() && !cfgsP[currSet]->CFGPs().hasKey(bb->toSynth()->callee()) ){
                         DEBUGP("\t\t\tblock is synth and callee is new, adding : " << bb->toSynth()->callee()->name() << endl);
@@ -199,6 +230,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
 
                         DEBUGP("\t\t\tAdding " << bbp->oldBB() << " to " << prev->oldBB() << endl);
                         prev->addOutEdge(bbp);
+                        bbp->addPrev(prev);
 
                         for (auto e: bb->outEdges()){
                             auto sink = e->sink();
@@ -214,18 +246,22 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                         bbp = currCfgp->get(bb->index());
                         DEBUGP("\t\t\tAdding " << bbp->oldBB() << " to " << prev->oldBB() << endl);
                         prev->addOutEdge(bbp);
+                        bbp->addPrev(prev);
                         DEBUGP("\t\t\t" << *prev << endl);
                     }
                 }
             }
         }
 
+
+        // Fix involvement values
         for (auto origcfg : *cfgColl){
-            cfgsP[currSet]->get(origcfg)->isInvolved();
+            // add to the WL cfgs that are involved
             if (cfgsP[currSet]->get(origcfg)->isInvolved()){
                 todoMarkedCfg.add(origcfg);
             }
         }
+        // for every cfg in the WL, mark all its callers as involved
         while(!todoMarkedCfg.isEmpty()){
             auto currCfg = todoMarkedCfg.pop();
             for (auto prevSynth: currCfg->callers()){
@@ -242,34 +278,38 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
     DEBUGP("CFG Projector - simplifying" << endl);
 
     bool change = true;
-
+    
+    // Simplication loop
     while (change){
         change = false;
         for (int currSet=0; currSet < setCount; currSet++){
             for (auto cfgp: cfgsP[currSet]->CFGPs()){
                 for (auto bbp: *cfgp->BBPs()){
                     if (bbp != nullptr){
+                        // Create a bypass around synth block calling a cfgp that is not involved
                         for (auto sink: bbp->outEdges()){
                             if (sink->oldBB()->isSynth()){
                                 if (!sink->toSynth()->callee()->isInvolved()){
-                                    //cout << *sink << endl;
                                     for (auto sinkSink: sink->outEdges()){
                                         DEBUGP("creating bypass from: " << bbp->oldBB() << endl);
                                         DEBUGP("-> to: " << sinkSink->oldBB() << ", in set: " << currSet << endl);
                                         bbp->addOutEdge(sinkSink);
+                                        sinkSink->addPrev(bbp);
+                                        sinkSink->removePrev(sink);
                                     }
                                     bbp->removeOutEdge(sink);
                                     change = true;
                                 }
                             }   
                         }
-
                         
+                        // Delete self loops (unless synth or "useful" basic)
                         if (!bbp->oldBB()->isSynth() && bbp->tags().count() == 0){
                             for (auto sink: bbp->outEdges()){
                                 if (sink == bbp) {
                                     DEBUGP("removing self loop of: " << bbp->oldBB() << ", from CFG: " << bbp->oldBB()->cfg() << ", in set: " << currSet << endl);
                                     bbp->removeOutEdge(sink);
+                                    bbp->removePrev(sink);
                                 }
                             }
                         }
@@ -279,6 +319,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
         }
     }
 
+    // Delete synth blocks that call a cfgp that is not involved
     for (int currSet=0; currSet < setCount; currSet++){
         for (auto cfgp: cfgsP[currSet]->CFGPs()){
             for (auto bbp: *cfgp->BBPs()){
@@ -294,6 +335,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
         }
     }
 
+    // Remove cfgps that are not involved
     for (int currSet=0; currSet < setCount; currSet++){
         for (auto cfgp: cfgsP[currSet]->CFGPs()){
             if (!cfgp->isInvolved()){
@@ -313,6 +355,9 @@ void CfgSetProjectorProcessor::dump(WorkSpace *ws, Output &out) {
             for (auto bp : *c->BBPs()){
                 if (bp != nullptr) {
                     out << "\t--Projected BB : " << bp->oldBB() << endl;
+                    for (auto p: bp->prevs()){
+                        out << "\t\t-> Prev : " << p->oldBB() << endl;
+                    }
                     for (auto e: bp->outEdges()){
                         out << "\t\t-> Edge to : " << e->oldBB() << endl;
                     }
