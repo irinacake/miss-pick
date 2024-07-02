@@ -1,5 +1,5 @@
-CXXFLAGS += $(shell otawa-config --cflags) --std=c++11 -g3
-LIBS += $(shell otawa-config --libs --rpath)
+CXXFLAGS += $(shell otawa-config otawa/trivial --cflags) --std=c++11 -g3
+LIBS += $(shell otawa-config otawa/trivial --libs --rpath)
 OBJDIR = bin
 OBJS =  $(OBJDIR)/test.o $(OBJDIR)/CacheSetState.o $(OBJDIR)/CacheSetsSaver.o $(OBJDIR)/MultipleSetsSaver.o $(OBJDIR)/AbstractCacheSetState.o $(OBJDIR)/CacheMissAnalyser.o $(OBJDIR)/CFGSetProjector.o
 

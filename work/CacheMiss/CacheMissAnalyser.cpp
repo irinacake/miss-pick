@@ -25,6 +25,65 @@ p::id<int> MISSVALUE("MISSVALUE");
 
 
 
+ot::time CacheMissEvent::cost(void) const {
+    return _icache->missPenalty();
+}
+
+void CacheMissEvent::estimate(ilp::Constraint *cons, bool on) const {
+    if (on){
+        auto kickers = *KICKERS(_bbp);
+        if (kickers.count() == 0){
+            cons->addLeft(1);
+        } else {
+            for (auto k : *KICKERS(_bbp)){
+                cons->addLeft(1,ipet::VAR(k));
+            }
+        }
+    }
+}
+
+bool CacheMissEvent::isEstimating(bool on) const {
+	return true;
+}
+
+Event::kind_t CacheMissEvent::kind(void) const {
+    return Event::kind_t::FETCH;
+}
+
+cstring CacheMissEvent::name(void) const {
+    switch (_icache->replacementPolicy())
+    {
+    case hard::Cache::replace_policy_t::FIFO:
+        return "CacheMiss Analysis for FIFO policy";
+        break;
+    case hard::Cache::replace_policy_t::LRU:
+        return "CacheMiss Analysis for LRU policy";
+        break;
+    case hard::Cache::replace_policy_t::PLRU:
+        return "CacheMiss Analysis for PLRU policy";
+        break;
+    default:
+        ASSERTP(false,"Policy not yet supported");
+        break;
+    }
+	return "";
+}
+
+Event::occurrence_t CacheMissEvent::occurrence(void) const {
+	return _occ;
+}
+Event::type_t CacheMissEvent::type() const {
+    return Event::type_t::LOCAL;
+}
+int CacheMissEvent::weight(void) const {
+	return 1;
+}
+string CacheMissEvent::detail(void) const {
+	return "";
+}
+
+
+
 
 
 
@@ -79,31 +138,54 @@ void CacheMissProcessor::kickedByP() {
     int amcpt = 0;
     int nccpt = 0;
     for (int i=0; i<icache->setCount(); i++){
-        cout << "----------\nPrinting for set " << i << endl << endl;
+        DEBUGK("----------\nPrinting for set " << i << endl << endl);
         for (auto c: pColl->graphOfSet(i)->CFGPs()) {
             for (auto bbp : *c->BBPs()){
                 if (bbp != nullptr) {
-                    cout << "--------\n- Printing for bbp: " << bbp->oldBB() << ". Tags are:"<< endl;
+                    if (logFor(otawa::Monitor::log_level_t::LOG_INST) && bbp->tags().count()>0){
+                        cout << "Processing BB: " << bbp->oldBB() << " from set " << i << endl;
+                    }
+                    DEBUGK("--------\n- Printing for bbp: " << bbp->oldBB() << ". Tags are:"<< endl);
                     for (auto t: bbp->tags()){
-                        cout << " - " << t << endl;
+                        DEBUGK(" - " << t << endl);
                     }
 
                     auto css = *SAVEDP(bbp);
+
+                    DEBUGK("- AH, AM, NC:" << endl);
+
+
                     
-                    /*
-                    if (bbp->tags().count() > 0){
-                        cout << "- This bbp contains the following entries:" << endl;
-                        for (auto acs: *css->getSavedCacheSets()){
-                            cout << " - ";
-                            acs->print(cout);
-                            cout << endl;
+
+                    DEBUGK("- And the kickers are:" << endl);
+                    // search in every entry states' W list to see if the tags of the current bbp have been kicked
+                    for (auto acs: *css->getSavedCacheSets()){
+                        // static cast is mandatory
+                        auto ccss = static_cast<const CompoundCacheSetState&>(*acs);
+                        auto w = ccss.getW();
+                        for (auto p: w->pairs()){
+                            if (bbp->tags().contains(p.fst)){
+                                (*KICKERS(bbp)).add(p.snd);
+                            }
                         }
                     }
-                    */
+                    for (auto k: (*KICKERS(bbp))){
+                        DEBUGK(" - " << k << endl);
+                    }
 
 
-                    cout << "- AH, AM, NC:" << endl;
                     for (auto t: bbp->tags()) {
+                        // retrieve the corresponding instruction for Events
+                        otawa::Inst* instoft;
+                        for (auto inst : *bbp->oldBB()->toBasic()){
+                            if (t == icache->block(inst->address())){
+                                instoft = inst;
+                                break;
+                            }
+                        }
+                        if (logFor(otawa::Monitor::log_level_t::LOG_INST)){
+                            cout << "\tInstruction: " << instoft;
+                        }
                         // both AH and AM are true by default
                         bool ah = true;
                         bool am = true;
@@ -129,39 +211,41 @@ void CacheMissProcessor::kickedByP() {
                                 break;
                             }
                         }
-                        cout << " - tag " << t << " is ";
+                        DEBUGK(" - tag " << t << " is ");
                         if (ah) {
-                            cout << "Always Hit";
+                            DEBUGK("Always Hit");
                             ahcpt++;
-                        } else if (am) {
-                            cout << "Always Miss";
-                            amcpt++;
-                        } else {
-                            cout << "Not Classified";
-                            nccpt++;
-                            //TODO: NC estimation
-                        }
-                        cout << endl;
-                    }
 
-
-                    
-                    cout << "- And the kickers are:" << endl;
-                    // search in every entry states' W list to see if the tags of the current bbp have been kicked
-                    for (auto acs: *css->getSavedCacheSets()){
-                        // static cast is mandatory
-                        auto ccss = static_cast<const CompoundCacheSetState&>(*acs);
-                        auto w = ccss.getW();
-                        for (auto p: w->pairs()){
-                            if (bbp->tags().contains(p.fst)){
-                                (*KICKERS(bbp)).add(p.snd);
+                            EVENT(bbp->oldBB()).add(new CacheMissEvent(instoft,Event::occurrence_t::NEVER,icache,bbp));
+                            if (logFor(otawa::Monitor::log_level_t::LOG_INST)){
+                                cout << " -> Always Hit" << endl;
                             }
-                        }
-                    }
-                    for (auto k: (*KICKERS(bbp))){
-                        cout << " - " << k << endl;
-                    }
+                        } else if (am) {
+                            DEBUGK("Always Miss");
+                            amcpt++;
 
+                            EVENT(bbp->oldBB()).add(new CacheMissEvent(instoft,Event::occurrence_t::ALWAYS,icache,bbp));
+
+                            if (logFor(otawa::Monitor::log_level_t::LOG_INST)){
+                                cout << " -> Always Miss" << endl;
+                            }
+                        } else {
+                            DEBUGK("Not Classified");
+                            nccpt++;
+
+                            EVENT(bbp->oldBB()).add(new CacheMissEvent(instoft,Event::occurrence_t::SOMETIMES,icache,bbp));
+                            
+                            //TODO: NC estimation
+                            if (logFor(otawa::Monitor::log_level_t::LOG_INST)){
+                                cout << " -> Not Classified" << endl;
+                                for (auto k : *KICKERS(bbp)){
+                                    cout << "\t\t" << ipet::VAR(k) << endl;
+                                }
+                            }
+
+                        }
+                        DEBUGK(endl);
+                    }
                 }
             }
         }
@@ -830,6 +914,7 @@ p::declare CacheMissProcessor::reg = p::init("CacheMissProcessor", Version(1, 0,
     .require(COLLECTED_CFG_FEATURE)
     .require(otawa::hard::CACHE_CONFIGURATION_FEATURE)
     .require(EXTENDED_LOOP_FEATURE)
+    .require(ipet::ASSIGNED_VARS_FEATURE)
     .require(CFG_SET_PROJECTOR_FEATURE);
 
 
@@ -838,6 +923,7 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
 	
     maincfg = taskCFG();
     icache = hard::CACHE_CONFIGURATION_FEATURE.get(workspace())->instCache();
+
 
     // Projected data
     pColl = CFG_SET_PROJECTOR_FEATURE.get(workspace());

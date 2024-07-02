@@ -3,6 +3,8 @@
 #include <otawa/app/Application.h>
 #include <otawa/app/CFGApplication.h>
 #include <elm/options.h>
+#include <otawa/display/ILPSystemDisplayer.h>
+#include <otawa/trivial/features.h>
 
 
 #include "CacheMissFeature.h"
@@ -31,7 +33,8 @@ protected:
 
     
     otawa::CACHE_CONFIG_PATH(props) = *cacheXml;
-  
+    ipet::EXPLICIT(props) = true;
+
     if (projection) {
         PROJECTION(props) = true;
     } else {
@@ -41,6 +44,9 @@ protected:
     
 
     require(CACHE_MISS_FEATURE);
+
+    require(trivial::EVENT_ADDING_FEATURE);
+    require(ipet::WCET_FEATURE);
     
   }
 

@@ -7,6 +7,9 @@
 #include <elm/sys/System.h>
 #include <elm/options.h>
 #include <elm/data/ListSet.h>
+#include <otawa/events/features.h>
+#include <otawa/ipet.h>
+
 
 #include "CacheSetState.h"
 #include "AbstractCacheSetState.h"
@@ -31,6 +34,31 @@ using namespace otawa;
  * - determine which Basic Block is responsible for the eviction of other Basic Block, which helps calculating tighter WCET values
  * 
 */
+
+
+
+
+class CacheMissEvent: public Event {
+public:
+	CacheMissEvent(otawa::Inst *i, Event::occurrence_t occ, const otawa::hard::Cache* icache): Event(i), _occ(occ), _icache(icache) {}
+	CacheMissEvent(otawa::Inst *i, Event::occurrence_t occ, const otawa::hard::Cache* icache, BBP* bbp): Event(i), _occ(occ), _icache(icache), _bbp(bbp) {}
+
+	ot::time cost(void) const override;
+	void estimate(ilp::Constraint *cons, bool on) const override;
+	bool isEstimating(bool on) const override;
+	Event::kind_t kind(void) const override;
+	cstring name(void) const override;
+	Event::occurrence_t occurrence(void) const override;
+	type_t type() const override;
+	int weight(void) const override;
+	string detail(void) const override;
+
+private:
+	//otawa::Inst *_inst;
+	const otawa::hard::Cache* _icache;
+	Event::occurrence_t _occ;
+	BBP* _bbp;
+};
 
 
 
