@@ -42,9 +42,9 @@ public:
 	inline void addOutEdge(BBP* newEdge){ if (!_outEdges.contains(newEdge)) _outEdges.add(newEdge); }
 	inline void removeOutEdge(BBP* edgeToDelete){ _outEdges.remove(edgeToDelete); }
 
-	inline List<BBP*,BBPEquiv> prevs(void){ return _prevs; }
-	inline void addPrev(BBP* newPrev){ if (!_prevs.contains(newPrev)) _prevs.add(newPrev); }
-	inline void removePrev(BBP* prevToDelete){ _prevs.remove(prevToDelete); }
+	//inline List<BBP*,BBPEquiv> prevs(void){ return _prevs; }
+	//inline void addPrev(BBP* newPrev){ if (!_prevs.contains(newPrev)) _prevs.add(newPrev); }
+	//inline void removePrev(BBP* prevToDelete){ _prevs.remove(prevToDelete); }
 
 	inline Block* oldBB(void){ return _oldBB; }
 
@@ -59,7 +59,7 @@ public:
 private:
 	List<int> _tags;
 	List<BBP*,BBPEquiv> _outEdges;
-	List<BBP*,BBPEquiv> _prevs;
+	//List<BBP*,BBPEquiv> _prevs;
 	Block* _oldBB;
 };
 

@@ -54,13 +54,13 @@ cstring CacheMissEvent::name(void) const {
     switch (_icache->replacementPolicy())
     {
     case hard::Cache::replace_policy_t::FIFO:
-        return "CacheMiss Analysis for FIFO policy";
+        return "CMA_FIFO";
         break;
     case hard::Cache::replace_policy_t::LRU:
-        return "CacheMiss Analysis for LRU policy";
+        return "CMA_LRU";
         break;
     case hard::Cache::replace_policy_t::PLRU:
-        return "CacheMiss Analysis for PLRU policy";
+        return "CMA_PLRU";
         break;
     default:
         ASSERTP(false,"Policy not yet supported");
@@ -79,6 +79,21 @@ int CacheMissEvent::weight(void) const {
 	return 1;
 }
 string CacheMissEvent::detail(void) const {
+	switch (_icache->replacementPolicy())
+    {
+    case hard::Cache::replace_policy_t::FIFO:
+        return "CacheMiss Analysis for FIFO policy";
+        break;
+    case hard::Cache::replace_policy_t::LRU:
+        return "CacheMiss Analysis for LRU policy";
+        break;
+    case hard::Cache::replace_policy_t::PLRU:
+        return "CacheMiss Analysis for PLRU policy";
+        break;
+    default:
+        ASSERTP(false,"Policy not yet supported");
+        break;
+    }
 	return "";
 }
 
@@ -250,9 +265,9 @@ void CacheMissProcessor::kickedByP() {
             }
         }
     }
-    cout << "ahcpt: " << ahcpt << endl;
-    cout << "amcpt: " << amcpt << endl;
-    cout << "nccpt: " << nccpt << endl;
+    DEBUGK("ahcpt: " << ahcpt << endl);
+    DEBUGK("amcpt: " << amcpt << endl);
+    DEBUGK("nccpt: " << nccpt << endl);
 }
 
 
@@ -327,7 +342,7 @@ void CacheMissProcessor::computeAnalysis(AbstractCacheSetState *initState, sys::
 
     //cout << "computing CacheMissProcessor" << endl;
     for (int set = 0; set < icache->setCount(); set++) {
-        cout << "computing new set : " << set << endl;
+        //cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
         completedCfg = 0;
         currTag = 0;
@@ -543,11 +558,25 @@ struct todoItemP {
     AbstractCacheSetState* cacheSetState; // associated cache state
 };
 
+
+class EquivTodoItemP {
+public:
+    static inline bool isEqual(const todoItemP *tip1, const todoItemP *tip2){
+        //cout << "equiv call" << endl;
+        if (tip1->block->equals(*tip2->block)) {
+            if (tip1->cacheSetState->compare(*tip2->cacheSetState) != 0){
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
 // Outer loop working list item for projected analysis
 struct callStackP {
     BBP* caller; // BBP responsible for the cfg call
     Vector<AbstractCacheSetState*> exitCS; // list of CS to add to the caller's successors once the current cfg is done
-    Vector<todoItemP> workingList; // inner loop working list
+    Vector<todoItemP*,EquivTodoItemP> workingList; // inner loop working list
     bool exitBypass = false; // shared bool to prevent multiple identical bypasses to exit
 };
 
@@ -561,7 +590,7 @@ struct callStackP {
  * @warning can only be executed for projected analysis
  */
 void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initState, sys::StopWatch& mySW){
-    Vector<callStackP> todo;
+    Vector<callStackP*> todo;
 
     int i = 0;
 
@@ -578,14 +607,14 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
         if (pColl->graphOfSet(set)->get(maincfg) == nullptr) { continue; }
         
         // create the first inner item
-        todoItemP initItem;
-        initItem.block = pColl->graphOfSet(set)->get(maincfg)->entry();
-        initItem.cacheSetState = initState->clone();
+        todoItemP* initItem = new todoItemP;
+        initItem->block = pColl->graphOfSet(set)->get(maincfg)->entry();
+        initItem->cacheSetState = initState->clone();
 
         // create the first outer item, with nullptr has a caller (stop condition)
-        callStackP initCallStack;
-        initCallStack.caller = nullptr;
-        initCallStack.workingList.add(initItem);
+        callStackP* initCallStack = new callStackP;
+        initCallStack->caller = nullptr;
+        initCallStack->workingList.add(initItem);
 
         todo.add(initCallStack);
 
@@ -598,111 +627,136 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
             }
 
             // if the inner WL is empty, then the current CFG is done and the states in the exitCS have to be added to the successors of the caller
-            if (todo.top().workingList.isEmpty()){
+            
+            if (todo.top()->workingList.isEmpty()){
                 DEBUG("\nCurrent callStack is done:" << endl);
                 auto callstack = todo.pop();
                 // Due to the "completedCfg" bitfield, the maincfg will never be able to add CS to the exitCS, and this loop will not be executed
-                for (auto cs: callstack.exitCS){
+                for (auto cs: callstack->exitCS){
                     DEBUG("- Adding exitCS item " << *cs << ", to :" << endl);
-                    for (auto sink: callstack.caller->outEdges()){
+                    for (auto sink: callstack->caller->outEdges()){
                         DEBUG("- - " << sink->oldBB() << endl);
-                        todoItemP itemToAdd;
-                        itemToAdd.block = sink;
-                        itemToAdd.cacheSetState = cs->clone();
-                        todo.top().workingList.add(itemToAdd);
+                        todoItemP* itemToAdd = new todoItemP;;
+                        itemToAdd->block = sink;
+                        itemToAdd->cacheSetState = cs->clone();
+                        if (!todo.top()->workingList.contains(itemToAdd)){
+                            todo.top()->workingList.add(itemToAdd);
+                        } else {
+                            delete itemToAdd->cacheSetState;
+                            delete itemToAdd;
+                        }
                     }
                 }
                 // prevent bad access for the maincfg
-                if (callstack.caller != nullptr) {
+                if (callstack->caller != nullptr) {
                     DEBUG("Marked cfg" << endl);
-                    completedCfg = completedCfg | (1 << callstack.caller->oldBB()->toSynth()->callee()->index());
+                    completedCfg = completedCfg | (1 << callstack->caller->oldBB()->toSynth()->callee()->index());
                 }
                 // skip to the next outer WL item
                 continue;
             }
 
-            auto curItem = todo.top().workingList.pop();
             
-            DEBUG("\nTodo: " << curItem.block->oldBB() << endl);
-            DEBUG("From CFG: " << curItem.block->oldBB()->cfg() << endl);
+            //cout << "Outer WL size : " << todo.count() << endl;
+            cout << "\nInner WL size : " << todo.top()->workingList.count() << endl;
+            auto* curItem = todo.top()->workingList.pop();
+            
+            DEBUG("\nTodo: " << curItem->block->oldBB() << endl);
+            //DEBUG("From CFG: " << curItem->block->oldBB()->cfg() << endl);
             DEBUG("Initial State :" << endl);
-            DEBUG(*curItem.cacheSetState << endl);
+            DEBUG(*curItem->cacheSetState << endl);
 
-            DEBUG("Before : " << **SAVEDP(curItem.block) << endl);
+            //DEBUG("Before : " << **SAVEDP(curItem->block) << endl);
             // the curItem.cacheSetState is the state that gets updated, so a clone must be created in order to add it to the curItem.block's CSSaver
-            AbstractCacheSetState* newState = curItem.cacheSetState->clone();
-            if (SAVEDP(curItem.block)->add(newState)){
-                DEBUG("After : " << **SAVEDP(curItem.block) << endl);
+            AbstractCacheSetState* newState = curItem->cacheSetState->clone();
+            if (SAVEDP(curItem->block)->add(newState)){
+                //DEBUG("After : " << **SAVEDP(curItem->block) << endl);
 
-                if (curItem.block->oldBB()->isEntry()) {
+                if (curItem->block->oldBB()->isEntry()) {
                     // for entry blocks, simply add the successors
                     DEBUG("is Entry block:" << endl);
-                    for (auto sink: curItem.block->outEdges()){
+                    for (auto sink: curItem->block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
-                        todoItemP itemToAdd;
-                        itemToAdd.block = sink;
-                        itemToAdd.cacheSetState = newState->clone();
-                        todo.top().workingList.add(itemToAdd);
+                        todoItemP* itemToAdd = new todoItemP;;
+                        itemToAdd->block = sink;
+                        itemToAdd->cacheSetState = newState->clone();
+                        if (!todo.top()->workingList.contains(itemToAdd)){
+                            todo.top()->workingList.add(itemToAdd);
+                        } else {
+                            delete itemToAdd->cacheSetState;
+                            delete itemToAdd;
+                        }
                     }
 
-                } else if (curItem.block->oldBB()->isExit()) {
+                } else if (curItem->block->oldBB()->isExit()) {
                     // for exit blocks, forward the newly created state to the exitCS, unless the current cfg is the maincfg
                     DEBUG("is Exit block:" << endl);
-                    if (todo.top().caller != nullptr){
+                    if (todo.top()->caller != nullptr){
                         DEBUG("- Adding "<< *newState << " to exitCS" << endl);
-                        todo.top().exitCS.add(newState);
+                        todo.top()->exitCS.add(newState);
                     }
                     
 
-                } else if (curItem.block->oldBB()->isSynth()) {
+                } else if (curItem->block->oldBB()->isSynth()) {
                     // for synth blocks, create a new outer WL item which will "pause" the exploration of the current cfg
                     DEBUG("is Synth block:" << endl);
                     
-                    if ( curItem.block->toSynth()->callee() != nullptr ){
-                        DEBUG("- Adding " << curItem.block->toSynth()->callee()->entry()->oldBB() << endl);
-                        todoItemP itemToAdd;
-                        itemToAdd.block = curItem.block->toSynth()->callee()->entry();
-                        itemToAdd.cacheSetState = newState->clone();
+                    if ( curItem->block->toSynth()->callee() != nullptr ){
+                        DEBUG("- Adding " << curItem->block->toSynth()->callee()->entry()->oldBB() << endl);
+                        todoItemP* itemToAdd = new todoItemP;
+                        itemToAdd->block = curItem->block->toSynth()->callee()->entry();
+                        itemToAdd->cacheSetState = newState->clone();
 
-                        callStackP newCallStack;
-                        newCallStack.caller = curItem.block;
-                        newCallStack.workingList.add(itemToAdd);
+
+                        callStackP* newCallStack = new callStackP;
+                        newCallStack->caller = curItem->block;
+                        newCallStack->workingList.add(itemToAdd);
 
                         todo.add(newCallStack);
                         
                     } //else { // L'ajout des todos suivant devrait avoir des TOP partout (undefined behaviour)
                     //}
 
-                } else if (curItem.block->oldBB()->isBasic()) {
+                } else if (curItem->block->oldBB()->isBasic()) {
                     // for basic blocks, update the curItem.cacheSetState with the curItem.block's tags, and add its successors
                     DEBUG("is Basic block: (updating curCS) -> ");
 
-                    for (auto inst : curItem.block->tags()){
-                        curItem.cacheSetState->update(inst,curItem.block->oldBB());
+                    for (auto inst : curItem->block->tags()){
+                        curItem->cacheSetState->update(inst,curItem->block->oldBB());
                     }
 
-                    DEBUG(*curItem.cacheSetState << endl);
+                    DEBUG(*curItem->cacheSetState << endl);
+                    
 
-                    for (auto sink: curItem.block->outEdges()){
+                    for (auto sink: curItem->block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
-                        todoItemP itemToAdd;
-                        itemToAdd.block = sink;
-                        itemToAdd.cacheSetState = curItem.cacheSetState->clone();
-                        todo.top().workingList.add(itemToAdd);
+                        todoItemP* itemToAdd = new todoItemP;;
+                        itemToAdd->block = sink;
+                        itemToAdd->cacheSetState = curItem->cacheSetState->clone();
+                        if (!todo.top()->workingList.contains(itemToAdd)){
+                            todo.top()->workingList.add(itemToAdd);
+                        } else {
+                            delete itemToAdd->cacheSetState;
+                            delete itemToAdd;
+                        }
                     }
 
-                } else if (curItem.block->oldBB()->isPhony()) {
+                } else if (curItem->block->oldBB()->isPhony()) {
                     // for phony blocks, simply add the successors
                     DEBUG("is Phony block:" << endl);
-                    for (auto sink: curItem.block->outEdges()){
+                    for (auto sink: curItem->block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
-                        todoItemP itemToAdd;
-                        itemToAdd.block = sink;
-                        itemToAdd.cacheSetState = newState->clone();
-                        todo.top().workingList.add(itemToAdd);
+                        todoItemP* itemToAdd = new todoItemP;;
+                        itemToAdd->block = sink;
+                        itemToAdd->cacheSetState = newState->clone();
+                        if (!todo.top()->workingList.contains(itemToAdd)){
+                            todo.top()->workingList.add(itemToAdd);
+                        } else {
+                            delete itemToAdd->cacheSetState;
+                        }
                     }
 
-                } else if (curItem.block->oldBB()->isUnknown()) {
+                } else if (curItem->block->oldBB()->isUnknown()) {
                     // Unknown blocks should ideally generate "TOP" (undefined behaviour)
                 } else {
                     ASSERTP(false,"Unexpected block type");
@@ -712,20 +766,21 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                 delete newState;
                 DEBUG("Not adding, bypass to exit" << endl);
                 // a bypass can only be executed once per cfg (-> once per outer WL item), but only if said cfg has been entirely explored at least once
-                if ((todo.top().exitBypass == false) && (completedCfg & (1 << curItem.block->oldBB()->cfg()->index())) ) {
+                if ((todo.top()->exitBypass == false) && (completedCfg & (1 << curItem->block->oldBB()->cfg()->index())) ) {
                     // a disgusting instruction to fetch the exit BBP of the current projected CFG through the regular CFG, because that information is not stored inside a projected CFG (yet?)
                     // Once the exit BBP is found, add the content of its CSSaver to the exitCS
-                    auto exitbb = pColl->graphOfSet(set)->get(curItem.block->oldBB()->cfg())->get(curItem.block->oldBB()->cfg()->exit()->index());
+                    auto exitbb = pColl->graphOfSet(set)->get(curItem->block->oldBB()->cfg())->get(curItem->block->oldBB()->cfg()->exit()->index());
                     DEBUG("Exitbb found : " << exitbb->oldBB()->cfg() << endl);
                     CacheSetsSaver* sState = SAVEDP(exitbb);
                     for (auto* s: *sState->getSavedCacheSets()){
-                        todo.top().exitCS.add(s);
+                        todo.top()->exitCS.add(s);
                     }
-                    todo.top().exitBypass = true;
+                    todo.top()->exitBypass = true;
                 }
             }
             // it is safe to delete the curItem.cacheSetState because only clones have been stored or passed to successors
-            delete curItem.cacheSetState;
+            //delete curItem->cacheSetState;
+            //delete curItem;
         }
     }
     cout << "computing done" << endl;

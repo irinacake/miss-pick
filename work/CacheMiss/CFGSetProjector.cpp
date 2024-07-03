@@ -230,7 +230,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
 
                         DEBUGP("\t\t\tAdding " << bbp->oldBB() << " to " << prev->oldBB() << endl);
                         prev->addOutEdge(bbp);
-                        bbp->addPrev(prev);
+                        //bbp->addPrev(prev);
 
                         for (auto e: bb->outEdges()){
                             auto sink = e->sink();
@@ -246,7 +246,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                         bbp = currCfgp->get(bb->index());
                         DEBUGP("\t\t\tAdding " << bbp->oldBB() << " to " << prev->oldBB() << endl);
                         prev->addOutEdge(bbp);
-                        bbp->addPrev(prev);
+                        //bbp->addPrev(prev);
                         DEBUGP("\t\t\t" << *prev << endl);
                     }
                 }
@@ -294,8 +294,8 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                                         DEBUGP("creating bypass from: " << bbp->oldBB() << endl);
                                         DEBUGP("-> to: " << sinkSink->oldBB() << ", in set: " << currSet << endl);
                                         bbp->addOutEdge(sinkSink);
-                                        sinkSink->addPrev(bbp);
-                                        sinkSink->removePrev(sink);
+                                        //sinkSink->addPrev(bbp);
+                                        //sinkSink->removePrev(sink);
                                     }
                                     bbp->removeOutEdge(sink);
                                     change = true;
@@ -309,7 +309,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                                 if (sink == bbp) {
                                     DEBUGP("removing self loop of: " << bbp->oldBB() << ", from CFG: " << bbp->oldBB()->cfg() << ", in set: " << currSet << endl);
                                     bbp->removeOutEdge(sink);
-                                    bbp->removePrev(sink);
+                                    //bbp->removePrev(sink);
                                 }
                             }
                         }
@@ -355,9 +355,9 @@ void CfgSetProjectorProcessor::dump(WorkSpace *ws, Output &out) {
             for (auto bp : *c->BBPs()){
                 if (bp != nullptr) {
                     out << "\t--Projected BB : " << bp->oldBB() << endl;
-                    for (auto p: bp->prevs()){
-                        out << "\t\t-> Prev : " << p->oldBB() << endl;
-                    }
+                    //for (auto p: bp->prevs()){
+                    //    out << "\t\t-> Prev : " << p->oldBB() << endl;
+                    //}
                     for (auto e: bp->outEdges()){
                         out << "\t\t-> Edge to : " << e->oldBB() << endl;
                     }

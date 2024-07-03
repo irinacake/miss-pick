@@ -43,6 +43,8 @@ public:
     virtual AbstractCacheSetState* clone() = 0;
     virtual int compare(const AbstractCacheSetState& other) const = 0;
     virtual void print(elm::io::Output &output) = 0;
+    friend elm::io::Output &operator<<(elm::io::Output &output, AbstractCacheSetState &state);
+
 };
 
 class AbstractCacheSetStateComparator {

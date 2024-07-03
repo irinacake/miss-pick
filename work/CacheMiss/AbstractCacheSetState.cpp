@@ -2,6 +2,13 @@
 
 
 
+elm::io::Output &operator<<(elm::io::Output &output, AbstractCacheSetState &state) {
+    // Redefinition of the << operator for the AbstractCacheSetState class
+    state.print(output);
+    return output;
+}
+
+
 ConcreteCacheSetState::ConcreteCacheSetState(otawa::hard::Cache::replace_policy_t policy) {
     switch (policy)
     {

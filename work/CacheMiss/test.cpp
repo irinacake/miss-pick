@@ -48,6 +48,7 @@ protected:
     require(trivial::EVENT_ADDING_FEATURE);
     require(ipet::WCET_FEATURE);
     
+    cout << ipet::WCET(workspace()) << endl;
   }
 
 private:
