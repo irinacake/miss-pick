@@ -151,6 +151,7 @@ void CacheMissProcessor::printStatesP() {
 void CacheMissProcessor::kickedByP() {
     int ahcpt = 0;
     int amcpt = 0;
+    int fmcpt = 0;
     int nccpt = 0;
     for (int i=0; i<icache->setCount(); i++){
         DEBUGK("----------\nPrinting for set " << i << endl << endl);
@@ -246,7 +247,12 @@ void CacheMissProcessor::kickedByP() {
                             }
                         } else {
                             DEBUGK("Not Classified");
-                            nccpt++;
+                            auto kickers = *KICKERS(bbp);
+                            if (kickers.count() == 0){
+                                fmcpt++;
+                            } else {
+                                nccpt++;
+                            }
 
                             EVENT(bbp->oldBB()).add(new CacheMissEvent(instoft,Event::occurrence_t::SOMETIMES,icache,bbp));
                             
@@ -265,9 +271,18 @@ void CacheMissProcessor::kickedByP() {
             }
         }
     }
-    DEBUGK("ahcpt: " << ahcpt << endl);
+    _ahcpt = ahcpt;
+    cout << "ahcpt : " << ahcpt << endl;
+    _amcpt = amcpt;
+    cout << "amcpt : " << amcpt << endl;
+    _nccpt = nccpt;
+    cout << "nccpt : " << nccpt << endl;
+    _fmcpt = fmcpt;
+    cout << "fmcpt : " << fmcpt << endl;
+    DEBUGK("ahcpt: " << ahcpt << endl);    
     DEBUGK("amcpt: " << amcpt << endl);
     DEBUGK("nccpt: " << nccpt << endl);
+    DEBUGK("fmcpt: " << nccpt << endl);
 }
 
 
@@ -595,7 +610,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
 
     exit_value = 0;
     for (int set = 0; set < icache->setCount(); set++) {
-        //cout << "computing new set : " << set << endl;
+        cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
         // bitfield to mark whether a cfg has been entirely completed or not
@@ -782,7 +797,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
             //delete curItem;
         }
     }
-    //cout << "computing done" << endl;
+    cout << "computing done" << endl;
 }
 
 

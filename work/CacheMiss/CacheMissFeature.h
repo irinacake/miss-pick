@@ -105,6 +105,10 @@ private:
 	CFG* maincfg;
 	int exit_value;
 	bool projection;
+	int _amcpt = 0;
+	int _ahcpt = 0;
+	int _fmcpt = 0;
+	int _nccpt = 0;
 };
 
 

@@ -51,7 +51,7 @@ protected:
     
     cout << "WCET:" << ipet::WCET(workspace()) << endl;
 
-    run(new otawa::display::ILPSystemDisplayer);
+    //run(new otawa::display::ILPSystemDisplayer);
   }
 
 private:
