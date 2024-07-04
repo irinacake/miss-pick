@@ -5,7 +5,7 @@
 #include <elm/options.h>
 #include <otawa/display/ILPSystemDisplayer.h>
 #include <otawa/trivial/features.h>
-
+#include <otawa/display/ILPSystemDisplayer.h>
 
 #include "CacheMissFeature.h"
 
@@ -31,6 +31,7 @@ protected:
   void processTask(const CFGCollection& coll, PropList &props) override {
 
 
+    trivial::INSTRUCTION_TIME(props) = 1;
     
     otawa::CACHE_CONFIG_PATH(props) = *cacheXml;
     ipet::EXPLICIT(props) = true;
@@ -48,7 +49,9 @@ protected:
     require(trivial::EVENT_ADDING_FEATURE);
     require(ipet::WCET_FEATURE);
     
-    cout << ipet::WCET(workspace()) << endl;
+    cout << "WCET:" << ipet::WCET(workspace()) << endl;
+
+    run(new otawa::display::ILPSystemDisplayer);
   }
 
 private:

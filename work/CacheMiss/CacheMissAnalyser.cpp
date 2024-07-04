@@ -562,13 +562,12 @@ struct todoItemP {
 class EquivTodoItemP {
 public:
     static inline bool isEqual(const todoItemP *tip1, const todoItemP *tip2){
-        //cout << "equiv call" << endl;
         if (tip1->block->equals(*tip2->block)) {
-            if (tip1->cacheSetState->compare(*tip2->cacheSetState) != 0){
-                return false;
+            if (tip1->cacheSetState->compare(*tip2->cacheSetState) == 0){
+                return true;
             }
         }
-        return true;
+        return false;
     }
 };
 
@@ -596,7 +595,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
 
     exit_value = 0;
     for (int set = 0; set < icache->setCount(); set++) {
-        cout << "computing new set : " << set << endl;
+        //cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
         // bitfield to mark whether a cfg has been entirely completed or not
@@ -658,11 +657,11 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
 
             
             //cout << "Outer WL size : " << todo.count() << endl;
-            cout << "\nInner WL size : " << todo.top()->workingList.count() << endl;
+            //cout << "Inner WL size : " << todo.top()->workingList.count() << endl;
             auto* curItem = todo.top()->workingList.pop();
             
             DEBUG("\nTodo: " << curItem->block->oldBB() << endl);
-            //DEBUG("From CFG: " << curItem->block->oldBB()->cfg() << endl);
+            DEBUG("From CFG: " << curItem->block->oldBB()->cfg() << endl);
             DEBUG("Initial State :" << endl);
             DEBUG(*curItem->cacheSetState << endl);
 
@@ -783,7 +782,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
             //delete curItem;
         }
     }
-    cout << "computing done" << endl;
+    //cout << "computing done" << endl;
 }
 
 

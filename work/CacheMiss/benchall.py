@@ -2,8 +2,10 @@ import os, json
 from pathlib import Path
 import shlex
 from subprocess import Popen, PIPE
+import subprocess
 from threading import Timer
 import time
+import sys
 
 def run(cmd, timeout_sec):
     print(cmd)
@@ -20,7 +22,9 @@ def run(cmd, timeout_sec):
 folders = [Path("tacle-bench/bench/kernel"), Path("tacle-bench/bench/sequential")]
 #folders = []
 
-banned = ["susan", "rosace"]
+#banned = ["gsm_dec", "quicksort", "sha", "bitonic", "recursion", "cubic", "md5", "pm", "susan", "rosace"]
+# quicksort, bitonic, recursion, gsm_enc
+banned = ["audiobeam", "gsm_enc", "gsm_dec", "quicksort", "fmref", "sha", "cubic", "md5", "pm", "susan", "rosace"]
 execpath = "./build/test"
 timeout = 1200
 
@@ -52,12 +56,18 @@ for folder in folders:
                 print("\n----------------------------------------------------------")
                 for way in [4,8]:
                     for row in [32,256]:
-                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml -p --cfg-raw", timeout)
+                        cmd = [execpath, elf, task['name'], "-c", "mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml", "-p", "--cfg-raw"]
+                        print(" ".join(cmd))
+                        subprocess.run(cmd)
                         #run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml --dump-for CacheMissProcessor --dump-to " + resultdir + task['name'] + "_FIFO_" + str(row) + "_" + str(way) + ".json -p ", timeout)
 
-                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml -p --cfg-raw", timeout)
+                        cmd = [execpath, elf, task['name'], "-c", "mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml", "-p", "--cfg-raw"]
+                        print(" ".join(cmd))
+                        subprocess.run([execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml -p --cfg-raw"], shell=True)
 
-                        run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml -p --cfg-raw", timeout)
+                        cmd = [execpath, elf, task['name'], "-c", "mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml", "-p", "--cfg-raw"]
+                        print(" ".join(cmd))
+                        subprocess.run([execpath + " " + elf + " " + task['name'] + " -c mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml -p --cfg-raw"], shell=True)
 
                 print("----------------------------------------------------------")
 
