@@ -1,6 +1,6 @@
 #include "CacheMissFeature.h"
 #include <otawa/cfg/Loop.h>
-
+#include <otawa/trivial/features.h>
 
 
 /**
@@ -272,13 +272,13 @@ void CacheMissProcessor::kickedByP() {
         }
     }
     _ahcpt = ahcpt;
-    cout << "ahcpt : " << ahcpt << endl;
+    //cout << "ahcpt : " << ahcpt << endl;
     _amcpt = amcpt;
-    cout << "amcpt : " << amcpt << endl;
+    //cout << "amcpt : " << amcpt << endl;
     _nccpt = nccpt;
-    cout << "nccpt : " << nccpt << endl;
+    //cout << "nccpt : " << nccpt << endl;
     _fmcpt = fmcpt;
-    cout << "fmcpt : " << fmcpt << endl;
+    //cout << "fmcpt : " << fmcpt << endl;
     DEBUGK("ahcpt: " << ahcpt << endl);    
     DEBUGK("amcpt: " << amcpt << endl);
     DEBUGK("nccpt: " << nccpt << endl);
@@ -962,7 +962,7 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     for (int i = 1; i < nbSets; i++){
         output << "," << totalList[i];
     }
-    output << "]\n";
+    output << "],\n";
 
     //delete(totalStates);
 }
@@ -1025,7 +1025,6 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
     } else {
         // Non-projection does not have a kick analysis function
     }
-    
 
 }
 
@@ -1060,8 +1059,6 @@ void CacheMissProcessor::destroy(WorkSpace *ws) {
 
 
 void CacheMissProcessor::dump(WorkSpace *ws, Output &out) {
-
-    out << "{\n";
     out << "\t\"file\" : \"" << workspace()->process()->program()->name() << "\",\n";  // name of the input file
     out << "\t\"projection\" : \"" << projection << "\",\n";
     out << "\t\"task\" : \"" << taskCFG() << "\",\n"; // analysed task
@@ -1076,6 +1073,9 @@ void CacheMissProcessor::dump(WorkSpace *ws, Output &out) {
 
     makeStats(out);
 
-    out << "}" << endl;
+    out << "\t\"_ahcpt\" : " << _ahcpt << ",\n";
+    out << "\t\"_amcpt\" : " << _amcpt << ",\n";
+    out << "\t\"_nccpt\" : " << _nccpt << ",\n";
+    out << "\t\"_fmcpt\" : " << _fmcpt << ",\n";
 
 }

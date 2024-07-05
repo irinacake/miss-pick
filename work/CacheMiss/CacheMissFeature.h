@@ -76,6 +76,7 @@ class CacheMissProcessor: public CFGProcessor {
 public:
 	static p::declare reg;
 	CacheMissProcessor();
+	void dumpStats(WorkSpace *ws, Output &out) {dump(ws, out);}
 
 protected:
 	void processAll(WorkSpace *ws) override;

@@ -3,7 +3,6 @@
 #include <otawa/app/Application.h>
 #include <otawa/app/CFGApplication.h>
 #include <elm/options.h>
-#include <otawa/display/ILPSystemDisplayer.h>
 #include <otawa/trivial/features.h>
 #include <otawa/display/ILPSystemDisplayer.h>
 
@@ -23,6 +22,7 @@ class test: public CFGApplication {
 public:
   test(void): CFGApplication(Make("test", Version(1, 0, 0))),
   cacheXml(option::ValueOption<string>::Make(*this).cmd("-c").cmd("--cache").help("Cache configuration xml file").usage(option::arg_required)),
+  outputfile(option::ValueOption<string>::Make(*this).cmd("-o").cmd("--outputfile").help("Output file").usage(option::arg_required)),
   projection(option::SwitchOption::Make(*this).cmd("-p").cmd("--projection").help("Use to set projection to true"))
 
 { }
@@ -44,18 +44,38 @@ protected:
 
     
 
-    require(CACHE_MISS_FEATURE);
+
+    auto cmProc = new CacheMissProcessor();
+    run(cmProc);
+
 
     require(trivial::EVENT_ADDING_FEATURE);
     require(ipet::WCET_FEATURE);
+
+    if (outputfile == nullptr) {
+      cout << "{\n";
+      cmProc->dumpStats(workspace(), cout);
+      cout << "\t\"WCET\" : " << ipet::WCET(workspace()) << ",\n";
+      cout << "}" << endl;
+    } else {
+      auto output = io::Output(*sys::Path(outputfile).write());
+      output << "{\n";
+      cmProc->dumpStats(workspace(), output);
+      output << "\t\"WCET\" : " << ipet::WCET(workspace()) << "\n";
+      output << "}" << endl;
+      delete &output.stream();
+    }
+
+
     
-    cout << "WCET:" << ipet::WCET(workspace()) << endl;
+    //cout << "WCET:" << ipet::WCET(workspace()) << endl;
 
     //run(new otawa::display::ILPSystemDisplayer);
   }
 
 private:
   option::ValueOption<string> cacheXml;
+  option::ValueOption<string> outputfile;
   option::Switch projection;
 };
 
