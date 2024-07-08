@@ -149,13 +149,14 @@ void CacheMissProcessor::printStatesP() {
  * @warning can only be executed for projected analysis
  */
 void CacheMissProcessor::kickedByP() {
-    int ahcpt = 0;
-    int amcpt = 0;
-    int fmcpt = 0;
-    int nccpt = 0;
+    // always hit, after miss, first miss, not classified counters
+    int ahcpt = 0; int amcpt = 0; int fmcpt = 0; int nccpt = 0;
+    // iterate over every set
     for (int i=0; i<icache->setCount(); i++){
         DEBUGK("----------\nPrinting for set " << i << endl << endl);
+        // iterate over every CFGP
         for (auto c: pColl->graphOfSet(i)->CFGPs()) {
+            // iterate over every BBP
             for (auto bbp : *c->BBPs()){
                 if (bbp != nullptr) {
                     if (logFor(otawa::Monitor::log_level_t::LOG_INST) && bbp->tags().count()>0){
@@ -166,20 +167,18 @@ void CacheMissProcessor::kickedByP() {
                         DEBUGK(" - " << t << endl);
                     }
 
+                    // retrieve css
                     auto css = *SAVEDP(bbp);
 
-                    DEBUGK("- AH, AM, NC:" << endl);
-
-
-                    
-
                     DEBUGK("- And the kickers are:" << endl);
-                    // search in every entry states' W list to see if the tags of the current bbp have been kicked
+                    // search in every of the bbp's entry states
                     for (auto acs: *css->getSavedCacheSets()){
                         // static cast is mandatory
                         auto ccss = static_cast<const CompoundCacheSetState&>(*acs);
+                        // search in every entry states' W list to see if the tags of the current bbp have been kicked
                         auto w = ccss.getW();
                         for (auto p: w->pairs()){
+                            // if p.fst is a tag that belongs to bbp, p.snd is a kicker
                             if (bbp->tags().contains(p.fst)){
                                 (*KICKERS(bbp)).add(p.snd);
                             }
@@ -190,8 +189,10 @@ void CacheMissProcessor::kickedByP() {
                     }
 
 
+                    DEBUGK("- AH, AM, NC:" << endl);
+                    // at tag (inst) level (or l-block)
                     for (auto t: bbp->tags()) {
-                        // retrieve the corresponding instruction for Events
+                        // retrieve the corresponding instruction (for otawa Events)
                         otawa::Inst* instoft;
                         for (auto inst : *bbp->oldBB()->toBasic()){
                             if (t == icache->block(inst->address())){
@@ -199,12 +200,16 @@ void CacheMissProcessor::kickedByP() {
                                 break;
                             }
                         }
+
                         if (logFor(otawa::Monitor::log_level_t::LOG_INST)){
                             cout << "\tInstruction: " << instoft;
                         }
+
                         // both AH and AM are true by default
                         bool ah = true;
                         bool am = true;
+
+                        // search through every state of the bbp if the current tag is contained
                         for (auto acs: *css->getSavedCacheSets()){
                             auto state = acs->getState();
 
@@ -216,23 +221,26 @@ void CacheMissProcessor::kickedByP() {
                                 }
                             }
                             if (contained){
-                                // if it was contained, then it is no longer AM
+                                // if it was contained at least once, then it is no longer AM
                                 am = false;
                             } else {
-                                // if it was not, then it is no longer AH
+                                // if it was not at least once, then it is no longer AH
                                 ah = false;
                             }
                             if (!am && !ah){
-                                // If both are false then it is already NC, no need to check more states
+                                // If both are false then it is already NC/FM, there is no need to check more states
                                 break;
                             }
                         }
+
+                        // once we know if it is ah/am/nc, create a corresponding otawa Event
                         DEBUGK(" - tag " << t << " is ");
                         if (ah) {
                             DEBUGK("Always Hit");
                             ahcpt++;
 
                             EVENT(bbp->oldBB()).add(new CacheMissEvent(instoft,Event::occurrence_t::NEVER,icache,bbp));
+
                             if (logFor(otawa::Monitor::log_level_t::LOG_INST)){
                                 cout << " -> Always Hit" << endl;
                             }
@@ -246,6 +254,7 @@ void CacheMissProcessor::kickedByP() {
                                 cout << " -> Always Miss" << endl;
                             }
                         } else {
+                            // when NC, we can distinguish the case where there are no kickers, which implies that there can only be a single miss, the first time the instruction is loaded, regardless of how many paths leaded to that situation (if there are several paths, they are mutually exclusive)
                             DEBUGK("Not Classified");
                             auto kickers = *KICKERS(bbp);
                             if (kickers.count() == 0){
@@ -256,7 +265,6 @@ void CacheMissProcessor::kickedByP() {
 
                             EVENT(bbp->oldBB()).add(new CacheMissEvent(instoft,Event::occurrence_t::SOMETIMES,icache,bbp));
                             
-                            //TODO: NC estimation
                             if (logFor(otawa::Monitor::log_level_t::LOG_INST)){
                                 cout << " -> Not Classified" << endl;
                                 for (auto k : *KICKERS(bbp)){
@@ -272,13 +280,9 @@ void CacheMissProcessor::kickedByP() {
         }
     }
     _ahcpt = ahcpt;
-    //cout << "ahcpt : " << ahcpt << endl;
     _amcpt = amcpt;
-    //cout << "amcpt : " << amcpt << endl;
     _nccpt = nccpt;
-    //cout << "nccpt : " << nccpt << endl;
     _fmcpt = fmcpt;
-    //cout << "fmcpt : " << fmcpt << endl;
     DEBUGK("ahcpt: " << ahcpt << endl);    
     DEBUGK("amcpt: " << amcpt << endl);
     DEBUGK("nccpt: " << nccpt << endl);
@@ -610,7 +614,8 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
 
     exit_value = 0;
     for (int set = 0; set < icache->setCount(); set++) {
-        cout << "computing new set : " << set << endl;
+        if (set % 5 == 0)
+            cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
         // bitfield to mark whether a cfg has been entirely completed or not

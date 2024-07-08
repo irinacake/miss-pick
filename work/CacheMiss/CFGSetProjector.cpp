@@ -1,4 +1,5 @@
 #include "CFGSetProjector.h"
+#include <elm/data/ListQueue.h>
 #include <otawa/cfg/Loop.h>
 #include "CacheMissDebug.h"
 
@@ -149,7 +150,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
     DEBUGP("CFG Projector - processing" << endl);
     
     Vector<CFGP *> todoCfg;
-    Vector<Pair<BBP *,Block *>> todo;
+    ListQueue<Pair<BBP *,Block *>> todo;
     Vector<CFG *> todoMarkedCfg;
 
     // Projection work loop, set by set
@@ -174,11 +175,11 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
             for (auto e: cfg->entry()->outEdges()){
                 auto sink = e->sink();
                 DEBUGP("(entry)to add : " << sink << endl);
-                todo.add(pair(alpha,sink));
+                todo.put(pair(alpha,sink));
             }
 
             while (!todo.isEmpty()){
-                auto currItem = todo.pop();
+                auto currItem = todo.get();
                 auto prev = currItem.fst;
                 auto bb = currItem.snd;
                 DEBUGP("\tprocessing bb  : " << bb << endl);
@@ -192,7 +193,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                         auto sink = e->sink();
                         DEBUGP("\t\tto add : " << sink << endl);
                         if (!todo.contains(pair(prev,sink))) {
-                            todo.add(pair(prev,sink));
+                            todo.put(pair(prev,sink));
                         }
                         
                     }
@@ -237,7 +238,7 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
                             DEBUGP("\t\t\tto add : " << sink << endl);
                             if ( currCfgp->get(sink->index()) == nullptr || !bbp->outEdges().contains(currCfgp->get(sink->index())) ){
                                 if (!todo.contains(pair(bbp,sink))) {
-                                    todo.add(pair(bbp,sink));
+                                    todo.put(pair(bbp,sink));
                                 }
                             }
                         }
@@ -273,7 +274,6 @@ void CfgSetProjectorProcessor::processAll(WorkSpace *ws){
             }
         }
     }
-
 
     DEBUGP("CFG Projector - simplifying" << endl);
 

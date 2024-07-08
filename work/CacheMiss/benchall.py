@@ -6,6 +6,7 @@ import subprocess
 from threading import Timer
 import time
 import sys
+import math
 
 def run(cmd, timeout_sec):
     print(cmd)
@@ -23,10 +24,10 @@ folders = [Path("tacle-bench/bench/kernel"), Path("tacle-bench/bench/sequential"
 #folders = []
 
 not_working = ["susan", "rosace"]
-no_ff = ["ammunition", "rijndael_enc", "huff_enc", "anagram", "quicksort", "bitonic", "recursion", "gsm_enc"]
+no_ff = ["ammunition", "rijndael_enc", "huff_enc", "anagram", "quicksort", "bitonic", "recursion", "gsm_enc", "pm"]
 too_slow = ["epic", "mpeg2", "petrinet", "rijndael_dec", "audiobeam", "gsm_enc", "gsm_dec", "quicksort", "fmref", "sha", "cubic", "md5", "pm", "statemate","g723_enc"]
 #banned = ["bitonic", "recursion", "audiobeam", "gsm_enc", "gsm_dec", "quicksort", "fmref", "sha", "cubic", "md5", "pm", "susan", "rosace"]
-banned = not_working + no_ff + too_slow
+banned = not_working + no_ff# + too_slow
 execpath = "./build/test"
 timeout = 3600
 
@@ -56,6 +57,28 @@ for folder in folders:
 
             if os.path.basename(subfolder) not in banned :
                 print("\n----------------------------------------------------------")
+                result = subprocess.run(['ostat', '-g', elf], stdout=subprocess.PIPE)
+                resultstr = result.stdout.decode('utf-8')
+                codesize = int(resultstr.split(":")[-1])
+                for t in [codesize]:#,0.5*codesize,0.25*codesize]:
+                    l = math.ceil(math.log2(t/64))
+                    print("L:", l)
+                    if (l < 1 or l > 8):
+                        break
+
+                    cmd = [execpath, elf, task['name'], "-c", "mycaches/4/mycacheFIFO" + str(l) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_FIFO_" + str(l) + "_4.json"]
+                    print(" ".join(cmd))
+                    subprocess.run(cmd)
+
+                    cmd = [execpath, elf, task['name'], "-c", "mycaches/4/mycacheLRU" + str(l) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_LRU_" + str(l) + "_4.json"]
+                    print(" ".join(cmd))
+                    subprocess.run(cmd)
+
+                    cmd = [execpath, elf, task['name'], "-c", "mycaches/4/mycachePLRU" + str(l) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_PLRU_" + str(l) + "_4.json"]
+                    print(" ".join(cmd))
+                    subprocess.run(cmd)
+                
+                '''
                 for way in [4,8]:
                     for row in [32,256]:
                         cmd = [execpath, elf, task['name'], "-c", "mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_FIFO_" + str(row) + "_" + str(way) + ".json"]
@@ -70,6 +93,7 @@ for folder in folders:
                         cmd = [execpath, elf, task['name'], "-c", "mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_PLRU_" + str(row) + "_" + str(way) + ".json"]
                         print(" ".join(cmd))
                         subprocess.run(cmd)
+                '''
 
                 print("----------------------------------------------------------")
 
