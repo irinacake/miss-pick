@@ -614,8 +614,8 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
 
     exit_value = 0;
     for (int set = 0; set < icache->setCount(); set++) {
-        if (set % 5 == 0)
-            cout << "computing new set : " << set << endl;
+        //if (set % 5 == 0)
+        //    cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
         // bitfield to mark whether a cfg has been entirely completed or not
@@ -802,7 +802,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
             //delete curItem;
         }
     }
-    cout << "computing done" << endl;
+    // cout << "computing done" << endl;
 }
 
 

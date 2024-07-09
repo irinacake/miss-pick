@@ -32,6 +32,9 @@ execpath = "./build/test"
 timeout = 3600
 
 
+
+cmd_master_list = []
+
 resultdir = "./data/exp" + str(int(time.time())) + "/"
 Path(resultdir).mkdir(parents=True, exist_ok=True)
 
@@ -67,34 +70,47 @@ for folder in folders:
                         break
 
                     cmd = [execpath, elf, task['name'], "-c", "mycaches/4/mycacheFIFO" + str(l) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_FIFO_" + str(l) + "_4.json"]
-                    print(" ".join(cmd))
-                    subprocess.run(cmd)
+                    print("- Adding ", elf)
+                    cmd_master_list.append(cmd)
+                    #subprocess.Popen(cmd)
 
                     cmd = [execpath, elf, task['name'], "-c", "mycaches/4/mycacheLRU" + str(l) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_LRU_" + str(l) + "_4.json"]
-                    print(" ".join(cmd))
-                    subprocess.run(cmd)
+                    print("- Adding ", elf)
+                    cmd_master_list.append(cmd)
+                    #subprocess.Popen(cmd)
 
                     cmd = [execpath, elf, task['name'], "-c", "mycaches/4/mycachePLRU" + str(l) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_PLRU_" + str(l) + "_4.json"]
-                    print(" ".join(cmd))
-                    subprocess.run(cmd)
-                
-                '''
-                for way in [4,8]:
-                    for row in [32,256]:
-                        cmd = [execpath, elf, task['name'], "-c", "mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_FIFO_" + str(row) + "_" + str(way) + ".json"]
-                        print(" ".join(cmd))
-                        subprocess.run(cmd)
-                        #run(execpath + " " + elf + " " + task['name'] + " -c mycaches/mycacheFIFO" + str(row) + "_" + str(way) + ".xml --dump-for CacheMissProcessor --dump-to " + resultdir + task['name'] + "_FIFO_" + str(row) + "_" + str(way) + ".json -p ", timeout)
+                    print("- Adding ", elf)
+                    cmd_master_list.append(cmd)
+                    #subprocess.Popen(cmd)
 
-                        cmd = [execpath, elf, task['name'], "-c", "mycaches/mycacheLRU" + str(row) + "_" + str(way) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_LRU_" + str(row) + "_" + str(way) + ".json"]
-                        print(" ".join(cmd))
-                        subprocess.run(cmd)
-
-                        cmd = [execpath, elf, task['name'], "-c", "mycaches/mycachePLRU" + str(row) + "_" + str(way) + ".xml", "-p", "--cfg-raw", "-o", resultdir + task['name'] + "_PLRU_" + str(row) + "_" + str(way) + ".json"]
-                        print(" ".join(cmd))
-                        subprocess.run(cmd)
-                '''
 
                 print("----------------------------------------------------------")
 
 
+cpt = len(cmd_master_list)
+running_p = []
+for cmd in cmd_master_list:
+    while len(running_p) > 15:
+        for p in running_p:
+            if p.poll() is not None:
+                print("finished: ", " ".join(p.args))
+                running_p.remove(p)
+                break
+    print("launched: ", " ".join(cmd))
+    p = subprocess.Popen(cmd)
+    cpt-=1
+    print("Processes waiting: ", cpt)
+    
+    running_p.append(p)
+
+
+
+while len(running_p) > 0:
+    for p in running_p:
+        if p.poll() is not None:
+            print("finished: ", " ".join(p.args))
+            running_p.remove(p)
+            print("Processes ongoing left: ", len(running_p))
+            break
+        
