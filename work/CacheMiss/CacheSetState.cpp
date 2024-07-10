@@ -4,6 +4,20 @@
 bool CacheSetState::isInit = false;
 int CacheSetState::associativity = 0;
 int CacheSetState::logAssociativity = 0;
+int* CacheSetStatePLRU::swapTables = nullptr;
+static int swapTables4[16] = {0,1,2,3,
+                            1,0,2,3,
+                            2,3,0,1,
+                            3,2,1,0};
+static int swapTables4[64] = {0,1,2,3,4,5,6,7,
+                            1,0,2,3,
+                            2,3,0,1,
+                            3,2,1,0,
+                            0,1,2,3,
+                            1,0,2,3,
+                            2,3,0,1,
+                            3,2,1,0};
+
 
 
 elm::io::Output &operator<<(elm::io::Output &output, const CacheSetState &state) {
@@ -54,7 +68,7 @@ CacheSetState* CacheSetStateLRU::clone(){
 }
 
 int CacheSetStateLRU::compare(const CacheSetState& other) const {
-    auto castedOther = static_cast<const CacheSetStateLRU&>(other);
+    auto& castedOther = static_cast<const CacheSetStateLRU&>(other);
 
     int i = 0;
     while (savedState[i] == castedOther.savedState[i] && i < associativity-1) {
@@ -98,7 +112,7 @@ CacheSetState* CacheSetStateFIFO::clone(){
 }
 
 int CacheSetStateFIFO::compare(const CacheSetState& other) const {
-    auto castedOther = static_cast<const CacheSetStateFIFO&>(other);
+    auto& castedOther = static_cast<const CacheSetStateFIFO&>(other);
 
     int i = 0;
     while (savedState[i] == castedOther.savedState[i] && i < associativity-1) {
@@ -178,7 +192,7 @@ CacheSetState* CacheSetStatePLRU::clone(){
 
 
 int CacheSetStatePLRU::compare(const CacheSetState& other) const {
-    auto castedOther = static_cast<const CacheSetStatePLRU&>(other);
+    auto& castedOther = static_cast<const CacheSetStatePLRU&>(other);
 
     int i = 0;
     while (savedState[i] == castedOther.savedState[i] && i < associativity-1) {

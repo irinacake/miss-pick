@@ -580,13 +580,14 @@ struct todoItemP {
 
 class EquivTodoItemP {
 public:
-    static inline bool isEqual(const todoItemP *tip1, const todoItemP *tip2){
+    static inline bool compare(const todoItemP *tip1, const todoItemP *tip2){
         if (tip1->block->equals(*tip2->block)) {
-            if (tip1->cacheSetState->compare(*tip2->cacheSetState) == 0){
-                return true;
-            }
+            return tip1->cacheSetState->compare(*tip2->cacheSetState);
+            // if (tip1->cacheSetState->compare(*tip2->cacheSetState) == 0){
+            //     return true;
+            // }
         }
-        return false;
+        return tip1->block->index() - tip2->block->index();
     }
 };
 
@@ -594,7 +595,7 @@ public:
 struct callStackP {
     BBP* caller; // BBP responsible for the cfg call
     Vector<AbstractCacheSetState*> exitCS; // list of CS to add to the caller's successors once the current cfg is done
-    Vector<todoItemP*,EquivTodoItemP> workingList; // inner loop working list
+    avl::Set<todoItemP*,EquivTodoItemP> workingList; // inner loop working list
     bool exitBypass = false; // shared bool to prevent multiple identical bypasses to exit
 };
 
@@ -615,7 +616,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
     exit_value = 0;
     for (int set = 0; set < icache->setCount(); set++) {
         //if (set % 5 == 0)
-        //    cout << "computing new set : " << set << endl;
+            cout << "computing new set : " << set << endl;
         DEBUG("computing new set : " << set << endl);
 
         // bitfield to mark whether a cfg has been entirely completed or not
@@ -678,7 +679,8 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
             
             //cout << "Outer WL size : " << todo.count() << endl;
             //cout << "Inner WL size : " << todo.top()->workingList.count() << endl;
-            auto* curItem = todo.top()->workingList.pop();
+            auto* curItem = *todo.top()->workingList.begin();
+            todo.top()->workingList.remove(curItem);
             
             DEBUG("\nTodo: " << curItem->block->oldBB() << endl);
             DEBUG("From CFG: " << curItem->block->oldBB()->cfg() << endl);
@@ -1007,6 +1009,9 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
 
     // Associativity initialisation (must be called once)
     CacheSetState::initAssociativity(icache->wayBits());
+    if (icache->replacementPolicy() == hard::Cache::PLRU){
+        CacheSetStatePLRU::initTables();
+    }
 
     // Non-projection is not (yet?) compatible with compoundStates?
     if (projection) {

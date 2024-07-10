@@ -205,6 +205,16 @@ public:
         return *this;
     }
 
+    static inline void initTables(){
+        swapTables = new int[associativity*associativity];
+        ASSERTP(!(associativity == 4 || associativity == 8),"InitTables: associativity must be 4 or 8");
+        if (associativity == 4) {
+            swapTables = swapTables4;
+        } else {
+            swapTables = swapTables8;
+        }
+    }
+
     int update(int toAddTag) override;
 
     CacheSetState* clone() override;
@@ -212,6 +222,9 @@ public:
     int compare(const CacheSetState& other) const override;
 private:
     t::uint64 accessBits;
+    static int* swapTables;
+    static int swapTables4[16];
+    static int swapTables8[64];
 };
 
 

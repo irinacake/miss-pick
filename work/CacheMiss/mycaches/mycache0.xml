@@ -3,8 +3,8 @@
 	<icache>
 		<block_bits>4</block_bits>
 		<way_bits>2</way_bits>
-		<row_bits>5</row_bits>
-		<replace>LRU</replace>
+		<row_bits>6</row_bits>
+		<replace>PLRU</replace>
 		<!--<replace>NONE|OTHER||LRU|RANDOM|FIFO|PLRU</replace>-->
 	</icache>
 </cache-config>

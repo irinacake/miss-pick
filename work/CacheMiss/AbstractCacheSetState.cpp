@@ -71,7 +71,7 @@ int CompoundCacheSetState::update(int toAddTag, Block* b) {
 
 
 int CompoundCacheSetState::compare(const AbstractCacheSetState& other) const {
-    auto castedOther = static_cast<const CompoundCacheSetState&>(other);
+    auto& castedOther = static_cast<const CompoundCacheSetState&>(other);
     int cscmp = cs->compare(*castedOther.cs);
     if (cscmp == 0) {
         auto a = W.pairs().begin();
