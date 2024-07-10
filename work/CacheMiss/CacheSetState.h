@@ -205,9 +205,9 @@ public:
         return *this;
     }
 
-    static inline void initTables(){
+    static void initTables(){
         swapTables = new int[associativity*associativity];
-        ASSERTP(!(associativity == 4 || associativity == 8),"InitTables: associativity must be 4 or 8");
+        ASSERTP(associativity == 4 || associativity == 8,"InitTables: associativity must be 4 or 8");
         if (associativity == 4) {
             swapTables = swapTables4;
         } else {

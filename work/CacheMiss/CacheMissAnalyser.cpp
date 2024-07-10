@@ -2,6 +2,8 @@
 #include <otawa/cfg/Loop.h>
 #include <otawa/trivial/features.h>
 
+#include <elm/avl/Set.h>
+
 
 /**
  * @class CacheMissProcessor
@@ -581,13 +583,19 @@ struct todoItemP {
 class EquivTodoItemP {
 public:
     static inline bool compare(const todoItemP *tip1, const todoItemP *tip2){
-        if (tip1->block->equals(*tip2->block)) {
-            return tip1->cacheSetState->compare(*tip2->cacheSetState);
-            // if (tip1->cacheSetState->compare(*tip2->cacheSetState) == 0){
-            //     return true;
-            // }
+        if( tip1->cacheSetState->compare(*tip2->cacheSetState) == 0){
+            return tip1->block->index() - tip2->block->index();
         }
-        return tip1->block->index() - tip2->block->index();
+        return tip1->cacheSetState->compare(*tip2->cacheSetState);
+
+        // cout << "comparing : ";
+        // cout << tip1->block->index();
+        // cout << " - " << tip2->block->index() << endl;
+        // if (tip1->block->equals(*tip2->block)) {
+        //     cout << "blocks are equal, cmp is " << tip1->cacheSetState->compare(*tip2->cacheSetState) << endl;
+        //     return tip1->cacheSetState->compare(*tip2->cacheSetState);
+        // }
+        // return tip2->block->index() - tip1->block->index();
     }
 };
 
@@ -617,6 +625,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
     for (int set = 0; set < icache->setCount(); set++) {
         //if (set % 5 == 0)
             cout << "computing new set : " << set << endl;
+        
         DEBUG("computing new set : " << set << endl);
 
         // bitfield to mark whether a cfg has been entirely completed or not
@@ -678,9 +687,18 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
 
             
             //cout << "Outer WL size : " << todo.count() << endl;
-            //cout << "Inner WL size : " << todo.top()->workingList.count() << endl;
+
+            // cout << "contains : " << todo.top()->workingList.contains(*todo.top()->workingList.begin()) << endl;
+
             auto* curItem = *todo.top()->workingList.begin();
+
+            
+            cout << "\nInner WL size : " << todo.top()->workingList.count() << endl;
+            // for (auto x: todo.top()->workingList){
+            //     cout << "x : " << x->block->index() << endl;
+            // }
             todo.top()->workingList.remove(curItem);
+            cout << "Inner WL size : " << todo.top()->workingList.count() << endl;
             
             DEBUG("\nTodo: " << curItem->block->oldBB() << endl);
             DEBUG("From CFG: " << curItem->block->oldBB()->cfg() << endl);
@@ -751,16 +769,25 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
 
                     for (auto sink: curItem->block->outEdges()){
                         DEBUG("- Adding " << sink->oldBB() << endl);
-                        todoItemP* itemToAdd = new todoItemP;;
+                        todoItemP* itemToAdd = new todoItemP;
                         itemToAdd->block = sink;
                         itemToAdd->cacheSetState = curItem->cacheSetState->clone();
+                        DEBUG("- - contains ?"<< endl);
                         if (!todo.top()->workingList.contains(itemToAdd)){
+                            DEBUG("- - add"<< endl);
+                            for (auto x: todo.top()->workingList){
+                                cout << "x : " << x->block->index() << endl;
+                            }
                             todo.top()->workingList.add(itemToAdd);
+                            for (auto x: todo.top()->workingList){
+                                cout << "x : " << x->block->index() << endl;
+                            }
                         } else {
                             delete itemToAdd->cacheSetState;
                             delete itemToAdd;
                         }
                     }
+                    DEBUG("Done adding" << endl);
 
                 } else if (curItem->block->oldBB()->isPhony()) {
                     // for phony blocks, simply add the successors
@@ -800,8 +827,8 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                 }
             }
             // it is safe to delete the curItem.cacheSetState because only clones have been stored or passed to successors
-            //delete curItem->cacheSetState;
-            //delete curItem;
+            delete curItem->cacheSetState;
+            delete curItem;
         }
     }
     // cout << "computing done" << endl;

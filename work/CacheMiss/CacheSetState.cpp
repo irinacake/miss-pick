@@ -4,19 +4,23 @@
 bool CacheSetState::isInit = false;
 int CacheSetState::associativity = 0;
 int CacheSetState::logAssociativity = 0;
+
 int* CacheSetStatePLRU::swapTables = nullptr;
-static int swapTables4[16] = {0,1,2,3,
-                            1,0,2,3,
-                            2,3,0,1,
-                            3,2,1,0};
-static int swapTables4[64] = {0,1,2,3,4,5,6,7,
-                            1,0,2,3,
-                            2,3,0,1,
-                            3,2,1,0,
+int CacheSetStatePLRU::swapTables4[16] = {
                             0,1,2,3,
                             1,0,2,3,
                             2,3,0,1,
-                            3,2,1,0};
+                            3,2,0,1};
+int CacheSetStatePLRU::swapTables8[64] = {
+                            0,1,2,3,4,5,6,7,
+                            1,0,2,3,4,5,6,7,
+                            2,3,0,1,4,5,6,7,
+                            3,2,0,1,4,5,6,7,
+                            4,5,6,7,0,1,2,3,
+                            5,4,6,7,0,1,2,3,
+                            6,7,4,5,0,1,2,3,
+                            7,6,4,5,0,1,2,3,
+                            };
 
 
 
@@ -127,6 +131,38 @@ int CacheSetStateFIFO::compare(const CacheSetState& other) const {
 
 
 
+
+// int CacheSetStatePLRU::update(int toAddTag){
+
+//     // position variable
+//     int pos = 0;
+//     bool found = false;
+//     int kicked = -1;
+
+//     // search loop : break before incrementing if the same tag is found
+//     while (pos < associativity && !found){ 
+//         if (toAddTag == savedState[pos]) {
+//             found = true;
+//             break;
+//         }
+//         pos++;
+//     }
+    
+//     if (!found) {
+//         kicked = savedState[associativity-1];
+//         savedState[associativity-1] = toAddTag;
+//     }
+
+//     int tmpSstate[associativity];
+//     for (int i = 0; i < associativity; i++){
+//         tmpSstate[i] = savedState[swapTables[associativity*pos + i]];
+//     }
+//     for (int i = 0; i < associativity; i++){
+//         savedState[i] = tmpSstate[i];
+//     }
+
+//     return kicked;
+// }
 
 int CacheSetStatePLRU::update(int toAddTag){
 
