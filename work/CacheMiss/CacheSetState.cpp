@@ -227,6 +227,17 @@ CacheSetState* CacheSetStatePLRU::clone(){
 }
 
 
+
+// int CacheSetStatePLRU::compare(const CacheSetState& other) const {
+//     auto& castedOther = static_cast<const CacheSetStatePLRU&>(other);
+
+//     int i = 0;
+//     while (savedState[i] == castedOther.savedState[i] && i < associativity-1) {
+//         i++;
+//     }
+//     return savedState[i] - castedOther.savedState[i];
+// }
+
 int CacheSetStatePLRU::compare(const CacheSetState& other) const {
     auto& castedOther = static_cast<const CacheSetStatePLRU&>(other);
 

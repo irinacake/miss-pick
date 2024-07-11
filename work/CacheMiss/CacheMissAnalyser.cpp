@@ -615,7 +615,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
     exit_value = 0;
     for (int set = 0; set < icache->setCount(); set++) {
         //if (set % 5 == 0)
-            //cout << "computing new set : " << set << endl;
+            cout << "computing new set : " << set << endl;
         
         DEBUG("computing new set : " << set << endl);
 
@@ -804,8 +804,8 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                 }
             }
             // it is safe to delete the curItem.cacheSetState because only clones have been stored or passed to successors
-            //delete curItem->cacheSetState;
-            //delete curItem;
+            delete curItem->cacheSetState;
+            delete curItem;
         }
     }
     // cout << "computing done" << endl;
