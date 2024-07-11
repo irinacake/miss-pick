@@ -582,20 +582,11 @@ struct todoItemP {
 
 class EquivTodoItemP {
 public:
-    static inline bool compare(const todoItemP *tip1, const todoItemP *tip2){
+    static inline int compare(const todoItemP *tip1, const todoItemP *tip2){
         if( tip1->cacheSetState->compare(*tip2->cacheSetState) == 0){
             return tip1->block->index() - tip2->block->index();
         }
         return tip1->cacheSetState->compare(*tip2->cacheSetState);
-
-        // cout << "comparing : ";
-        // cout << tip1->block->index();
-        // cout << " - " << tip2->block->index() << endl;
-        // if (tip1->block->equals(*tip2->block)) {
-        //     cout << "blocks are equal, cmp is " << tip1->cacheSetState->compare(*tip2->cacheSetState) << endl;
-        //     return tip1->cacheSetState->compare(*tip2->cacheSetState);
-        // }
-        // return tip2->block->index() - tip1->block->index();
     }
 };
 
@@ -624,7 +615,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
     exit_value = 0;
     for (int set = 0; set < icache->setCount(); set++) {
         //if (set % 5 == 0)
-            cout << "computing new set : " << set << endl;
+            //cout << "computing new set : " << set << endl;
         
         DEBUG("computing new set : " << set << endl);
 
@@ -687,19 +678,11 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
 
             
             //cout << "Outer WL size : " << todo.count() << endl;
-
-            // cout << "contains : " << todo.top()->workingList.contains(*todo.top()->workingList.begin()) << endl;
+            //cout << "\nInner WL size : " << todo.top()->workingList.count() << endl;
 
             auto* curItem = *todo.top()->workingList.begin();
-
-            
-            cout << "\nInner WL size : " << todo.top()->workingList.count() << endl;
-            // for (auto x: todo.top()->workingList){
-            //     cout << "x : " << x->block->index() << endl;
-            // }
             todo.top()->workingList.remove(curItem);
-            cout << "Inner WL size : " << todo.top()->workingList.count() << endl;
-            
+
             DEBUG("\nTodo: " << curItem->block->oldBB() << endl);
             DEBUG("From CFG: " << curItem->block->oldBB()->cfg() << endl);
             DEBUG("Initial State :" << endl);
@@ -775,13 +758,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         DEBUG("- - contains ?"<< endl);
                         if (!todo.top()->workingList.contains(itemToAdd)){
                             DEBUG("- - add"<< endl);
-                            for (auto x: todo.top()->workingList){
-                                cout << "x : " << x->block->index() << endl;
-                            }
                             todo.top()->workingList.add(itemToAdd);
-                            for (auto x: todo.top()->workingList){
-                                cout << "x : " << x->block->index() << endl;
-                            }
                         } else {
                             delete itemToAdd->cacheSetState;
                             delete itemToAdd;
@@ -827,8 +804,8 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                 }
             }
             // it is safe to delete the curItem.cacheSetState because only clones have been stored or passed to successors
-            delete curItem->cacheSetState;
-            delete curItem;
+            //delete curItem->cacheSetState;
+            //delete curItem;
         }
     }
     // cout << "computing done" << endl;
