@@ -7,6 +7,8 @@
 #include "CacheMissDebug.h"
 
 
+#define newPLRU
+
 using namespace elm;
 using namespace otawa;
 
@@ -192,16 +194,27 @@ private:
 class CacheSetStatePLRU: public CacheSetState {
 public:
 
+#ifdef newPLRU
+    CacheSetStatePLRU(): CacheSetState() {}
+#else
     CacheSetStatePLRU(): CacheSetState(), accessBits(0) {}
+#endif
 
     ~CacheSetStatePLRU() {}
 
-    CacheSetStatePLRU(const CacheSetStatePLRU& other): CacheSetState(other), accessBits(other.accessBits) {}
+#ifdef newPLRU
+    CacheSetStatePLRU(const CacheSetStatePLRU& other): CacheSetState(other) {}
+#else
+    CacheSetStatePLRU(const CacheSetStatePLRU& other): CacheSetState(other)
+    ,accessBits(other.accessBits) {}
+#endif
 
     CacheSetStatePLRU& operator=(const CacheSetStatePLRU& other){ // Copy assignment
         if (this == &other){ return *this; }
         CacheSetState::operator=(other);
+#ifndef newPLRU
         accessBits = other.accessBits;
+#endif
         return *this;
     }
 
@@ -221,7 +234,9 @@ public:
 
     int compare(const CacheSetState& other) const override;
 private:
+#ifndef newPLRU
     t::uint64 accessBits;
+#endif
     static int* swapTables;
     static int swapTables4[16];
     static int swapTables8[64];

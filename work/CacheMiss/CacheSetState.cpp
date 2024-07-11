@@ -132,37 +132,53 @@ int CacheSetStateFIFO::compare(const CacheSetState& other) const {
 
 
 
-// int CacheSetStatePLRU::update(int toAddTag){
+#ifdef newPLRU
 
-//     // position variable
-//     int pos = 0;
-//     bool found = false;
-//     int kicked = -1;
+int CacheSetStatePLRU::update(int toAddTag){
 
-//     // search loop : break before incrementing if the same tag is found
-//     while (pos < associativity && !found){ 
-//         if (toAddTag == savedState[pos]) {
-//             found = true;
-//             break;
-//         }
-//         pos++;
-//     }
+    // position variable
+    int pos = 0;
+    bool found = false;
+    int kicked = -1;
+
+    // search loop : break before incrementing if the same tag is found
+    while (pos < associativity && !found){ 
+        if (toAddTag == savedState[pos]) {
+            found = true;
+            break;
+        }
+        pos++;
+    }
+    pos = pos == associativity ? associativity - 1 : pos;
     
-//     if (!found) {
-//         kicked = savedState[associativity-1];
-//         savedState[associativity-1] = toAddTag;
-//     }
+    if (!found) {
+        kicked = savedState[associativity-1];
+        savedState[associativity-1] = toAddTag;
+    }
 
-//     int tmpSstate[associativity];
-//     for (int i = 0; i < associativity; i++){
-//         tmpSstate[i] = savedState[swapTables[associativity*pos + i]];
-//     }
-//     for (int i = 0; i < associativity; i++){
-//         savedState[i] = tmpSstate[i];
-//     }
+    int tmpSstate[associativity];
+    for (int i = 0; i < associativity; i++){
+        tmpSstate[i] = savedState[swapTables[associativity*pos + i]];
+    }
+    for (int i = 0; i < associativity; i++){
+        savedState[i] = tmpSstate[i];
+    }
 
-//     return kicked;
-// }
+    return kicked;
+}
+
+
+int CacheSetStatePLRU::compare(const CacheSetState& other) const {
+    auto& castedOther = static_cast<const CacheSetStatePLRU&>(other);
+
+    int i = 0;
+    while (savedState[i] == castedOther.savedState[i] && i < associativity-1) {
+        i++;
+    }
+    return savedState[i] - castedOther.savedState[i];
+}
+
+#else
 
 int CacheSetStatePLRU::update(int toAddTag){
 
@@ -222,21 +238,6 @@ int CacheSetStatePLRU::update(int toAddTag){
     return kicked;
 }
 
-CacheSetState* CacheSetStatePLRU::clone(){
-    return new CacheSetStatePLRU(*this);
-}
-
-
-
-// int CacheSetStatePLRU::compare(const CacheSetState& other) const {
-//     auto& castedOther = static_cast<const CacheSetStatePLRU&>(other);
-
-//     int i = 0;
-//     while (savedState[i] == castedOther.savedState[i] && i < associativity-1) {
-//         i++;
-//     }
-//     return savedState[i] - castedOther.savedState[i];
-// }
 
 int CacheSetStatePLRU::compare(const CacheSetState& other) const {
     auto& castedOther = static_cast<const CacheSetStatePLRU&>(other);
@@ -251,6 +252,13 @@ int CacheSetStatePLRU::compare(const CacheSetState& other) const {
         return savedState[i] - castedOther.savedState[i];
     }
     
+}
+
+#endif
+
+
+CacheSetState* CacheSetStatePLRU::clone(){
+    return new CacheSetStatePLRU(*this);
 }
 
 

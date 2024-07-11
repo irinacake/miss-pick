@@ -75,7 +75,7 @@ public:
     int update(int toAddTag, Block* b) override { return cs->update(toAddTag); }
     AbstractCacheSetState* clone() override { return new ConcreteCacheSetState(*this); }
     int compare(const AbstractCacheSetState& other) const override {
-        auto castedOther = static_cast<const ConcreteCacheSetState&>(other);
+        auto& castedOther = static_cast<const ConcreteCacheSetState&>(other);
         return cs->compare(*castedOther.cs);
     }
     void print(elm::io::Output &output) override { output << *cs; }
