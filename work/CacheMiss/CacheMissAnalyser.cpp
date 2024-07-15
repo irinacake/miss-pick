@@ -21,7 +21,9 @@
 p::id<MultipleSetsSaver*> SAVED("SAVED");
 p::id<CacheSetsSaver*> SAVEDP("SAVEDP");
 p::id<bool> PROJECTION("PROJECTION");
+#ifndef newKickers
 p::id<ListSet<Block*>> KICKERS("KICKERS");
+#endif
 p::id<int> MISSVALUE("MISSVALUE");
 
 
@@ -30,6 +32,31 @@ p::id<int> MISSVALUE("MISSVALUE");
 ot::time CacheMissEvent::cost(void) const {
     return _icache->missPenalty();
 }
+
+
+#ifdef newKickers
+void CacheMissEvent::estimate(ilp::Constraint *cons, bool on) const {
+    if (on){
+        auto kickers = *KICKERS(_bbp);
+        if (kickers.count() == 0){
+            cons->addLeft(1);
+        } else {
+            for (auto k : *KICKERS(_bbp)){
+                if (k->type == LoopOrBlock::BLOCK){
+                    cons->addLeft(1,ipet::VAR(k->lob.block));
+                } else {
+                    for (auto e: k->lob.loop->entries()){
+                        if (!BACK_EDGE(e)){
+                            cons->addLeft(1,ipet::VAR(e));
+                        }
+                    }
+                    
+                }
+            }
+        }
+    }
+}
+#else
 
 void CacheMissEvent::estimate(ilp::Constraint *cons, bool on) const {
     if (on){
@@ -43,6 +70,8 @@ void CacheMissEvent::estimate(ilp::Constraint *cons, bool on) const {
         }
     }
 }
+
+#endif
 
 bool CacheMissEvent::isEstimating(bool on) const {
 	return true;
@@ -172,7 +201,16 @@ void CacheMissProcessor::kickedByP() {
                     // retrieve css
                     auto css = *SAVEDP(bbp);
 
-                    DEBUGK("- And the kickers are:" << endl);
+                    DEBUGK("- The kickers are:" << endl);
+#ifdef newKickers
+                    for (auto k: (*KICKERS(bbp))){
+                        if (k->type == LoopOrBlock::BLOCK){
+                            DEBUGK(" - " << k->lob.block << endl);
+                        } else {
+                            DEBUGK(" - " << k->lob.loop << endl);
+                        }
+                    }
+#else
                     // search in every of the bbp's entry states
                     for (auto acs: *css->getSavedCacheSets()){
                         // static cast is mandatory
@@ -189,6 +227,7 @@ void CacheMissProcessor::kickedByP() {
                     for (auto k: (*KICKERS(bbp))){
                         DEBUGK(" - " << k << endl);
                     }
+#endif
 
 
                     DEBUGK("- AH, AM, NC:" << endl);
@@ -257,11 +296,12 @@ void CacheMissProcessor::kickedByP() {
                             }
                         } else {
                             // when NC, we can distinguish the case where there are no kickers, which implies that there can only be a single miss, the first time the instruction is loaded, regardless of how many paths leaded to that situation (if there are several paths, they are mutually exclusive)
-                            DEBUGK("Not Classified");
                             auto kickers = *KICKERS(bbp);
                             if (kickers.count() == 0){
+                                DEBUGK("First Miss");
                                 fmcpt++;
                             } else {
+                                DEBUGK("Not Classified");
                                 nccpt++;
                             }
 
@@ -270,7 +310,20 @@ void CacheMissProcessor::kickedByP() {
                             if (logFor(otawa::Monitor::log_level_t::LOG_INST)){
                                 cout << " -> Not Classified" << endl;
                                 for (auto k : *KICKERS(bbp)){
+#ifdef newKickers
+                                    if (k->type == LoopOrBlock::BLOCK){
+                                        cout << "\t\t" << ipet::VAR(k->lob.block) << endl;
+                                    } else {
+                                        for (auto e: k->lob.loop->entries()){
+                                            if (Loop::of(e->source()) != k->lob.loop){
+                                                cout << "\t\t" << ipet::VAR(e->source()) << endl;
+                                            }
+                                        }
+                                        
+                                    }
+#else
                                     cout << "\t\t" << ipet::VAR(k) << endl;
+#endif
                                 }
                             }
 
@@ -285,10 +338,10 @@ void CacheMissProcessor::kickedByP() {
     _amcpt = amcpt;
     _nccpt = nccpt;
     _fmcpt = fmcpt;
-    DEBUGK("ahcpt: " << ahcpt << endl);    
-    DEBUGK("amcpt: " << amcpt << endl);
-    DEBUGK("nccpt: " << nccpt << endl);
-    DEBUGK("fmcpt: " << nccpt << endl);
+    DEBUGK("ahcpt: " << ahcpt << endl); // always hit
+    DEBUGK("amcpt: " << amcpt << endl); // after miss
+    DEBUGK("bmcpt: " << nccpt << endl); // bounded miss
+    DEBUGK("fmcpt: " << fmcpt << endl); // first miss
 }
 
 
@@ -582,7 +635,7 @@ struct todoItemP {
 
 class EquivTodoItemP {
 public:
-    static inline int compare(const todoItemP *tip1, const todoItemP *tip2){
+    int doCompare(const todoItemP *tip1, const todoItemP *tip2) const {
         if( tip1->cacheSetState->compare(*tip2->cacheSetState) == 0){
             return tip1->block->index() - tip2->block->index();
         }
@@ -680,7 +733,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
 
             
             //cout << "Outer WL size : " << todo.count() << endl;
-            //cout << "\nInner WL size : " << todo.top()->workingList.count() << endl;
+            //cout << "Inner WL size : " << todo.top()->workingList.count() << endl;
 
             auto* curItem = *todo.top()->workingList.begin();
             todo.top()->workingList.remove(curItem);
@@ -746,7 +799,11 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                     DEBUG("is Basic block: (updating curCS) -> ");
 
                     for (auto inst : curItem->block->tags()){
+#ifdef newKickers
+                        curItem->cacheSetState->update(inst,curItem->block);
+#else
                         curItem->cacheSetState->update(inst,curItem->block->oldBB());
+#endif
                     }
 
                     DEBUG(*curItem->cacheSetState << endl);
@@ -757,9 +814,12 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         todoItemP* itemToAdd = new todoItemP;
                         itemToAdd->block = sink;
                         itemToAdd->cacheSetState = curItem->cacheSetState->clone();
-                        DEBUG("- - contains ?"<< endl);
                         if (!todo.top()->workingList.contains(itemToAdd)){
-                            DEBUG("- - add"<< endl);
+#ifdef newKickers
+                            if (Loop::of(curItem->block->oldBB()) != Loop::of(sink->oldBB())){
+                                itemToAdd->cacheSetState->reduce(Loop::of(curItem->block->oldBB()));
+                            }
+#endif
                             todo.top()->workingList.add(itemToAdd);
                         } else {
                             delete itemToAdd->cacheSetState;
@@ -1072,7 +1132,6 @@ void CacheMissProcessor::destroy(WorkSpace *ws) {
     }
     CFGProcessor::destroy(ws);
 }
-
 
 void CacheMissProcessor::dump(WorkSpace *ws, Output &out) {
     out << "\t\"file\" : \"" << workspace()->process()->program()->name() << "\",\n";  // name of the input file

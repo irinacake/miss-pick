@@ -149,6 +149,7 @@ int CacheSetStatePLRU::update(int toAddTag){
         }
         pos++;
     }
+    if (pos == 0) return -1;
     pos = pos == associativity ? associativity - 1 : pos;
     
     if (!found) {

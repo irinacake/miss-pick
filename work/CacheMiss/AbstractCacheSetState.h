@@ -5,9 +5,16 @@
 #include <elm/data/ListMap.h>
 #include <otawa/otawa.h>
 #include <otawa/hard/CacheConfiguration.h>
+#include <elm/data/ListSet.h>
+#include <otawa/cfg/Loop.h>
 
 #include "CacheMissDebug.h"
 #include "CacheSetState.h"
+//#include "CacheMissFeature.h"
+
+#include "CFGSetProjector.h"
+
+
 
 
 using namespace elm;
@@ -40,6 +47,10 @@ public:
         CacheSetState::initAssociativity(associativityBits);}
 
     virtual int update(int toAddTag, Block* b) = 0;
+#ifdef newKickers
+    virtual int update(int toAddTag, BBP* b) = 0;
+    virtual void reduce(otawa::Loop* l) = 0;
+#endif
     virtual AbstractCacheSetState* clone() = 0;
     virtual int compare(const AbstractCacheSetState& other) const = 0;
     virtual void print(elm::io::Output &output) = 0;
@@ -49,7 +60,7 @@ public:
 
 class AbstractCacheSetStateComparator {
     public:
-    int doCompare(const AbstractCacheSetState *object1, const AbstractCacheSetState *object2) {
+    int doCompare(const AbstractCacheSetState *object1, const AbstractCacheSetState *object2) const {
         return object1->compare(*object2);
     }
     static int compare(const AbstractCacheSetState *object1, const AbstractCacheSetState *object2) {
@@ -73,6 +84,10 @@ public:
 
 
     int update(int toAddTag, Block* b) override { return cs->update(toAddTag); }
+#ifdef newKickers
+    int update(int toAddTag, BBP* b) override { return cs->update(toAddTag); }
+    void reduce(otawa::Loop* l) override {}
+#endif
     AbstractCacheSetState* clone() override { return new ConcreteCacheSetState(*this); }
     int compare(const AbstractCacheSetState& other) const override {
         auto& castedOther = static_cast<const ConcreteCacheSetState&>(other);
@@ -86,6 +101,116 @@ private:
 
 
 
+#ifdef newKickers
+
+enum LoopOrBlock {LOOP, BLOCK};
+
+struct LoopBlock {
+    union lbUnion
+    {
+        otawa::Loop* loop; 
+        Block* block; 
+    };
+    LoopBlock(LoopOrBlock t, Block* v) {
+        type = t;
+        lob.block = v;
+    }
+    LoopBlock(LoopOrBlock t, otawa::Loop* v) {
+        type = t;
+        lob.loop = v;
+    }
+    LoopBlock* clone(){
+        if (type == LoopOrBlock::BLOCK) {
+            return new LoopBlock(type, lob.block);
+        } else {
+            return new LoopBlock(type, lob.loop);
+        }
+    }
+    LoopOrBlock type;
+    lbUnion lob;
+};
+
+class LoopBlockComparator {
+    public:
+    int doCompare(const LoopBlock *object1, const LoopBlock *object2) const {
+        cout << "compare called" << endl;
+        if (object1->type == object2->type) {
+            if (object1->type == LoopOrBlock::BLOCK){
+                return object1->lob.block - object2->lob.block;
+            } else {
+                return object1->lob.loop->header() - object2->lob.loop->header();
+            }
+        } else {
+            return object1->type - object2->type;
+        }
+    }
+};
+
+
+extern p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS;
+
+
+class CompoundCacheSetState: public AbstractCacheSetState {
+public:
+    CompoundCacheSetState(otawa::hard::Cache::replace_policy_t policy);
+    ~CompoundCacheSetState() { delete cs; }
+    CompoundCacheSetState(const CompoundCacheSetState& other) {
+        cs = other.cs->clone();
+        W = new ListMap<int,LoopBlock*>();
+
+        for (auto x: *other.W){
+
+        }
+
+
+        auto w = other.W->pairs().begin();
+        for (; w != other.W->pairs().end(); ++w) {
+            W->put((*w).fst,(*w).snd->clone());
+        }
+    }
+
+    inline void setStateValue(int position, int value) override { cs->setStateValue(position,value); }
+    inline int getStateValue(int position) override { return cs->getStateValue(position); }
+    inline int* getState() override { return cs->getState(); }
+
+    int update(int toAddTag, Block* b) override;
+    int update(int toAddTag, BBP* b) override;
+    void reduce(otawa::Loop* l) override {
+        cout << "reducing: " << W->count() << endl;
+        auto w = W->pairs().begin();
+        for (; w != W->pairs().end(); ++w) {
+            if ( (*w).snd->type == LoopOrBlock::LOOP ){
+                cout << "is a loop" << endl;
+                if ((*w).snd->lob.loop->parent() == l){
+                    auto tag = (*w).fst;
+                    W->put(tag, new LoopBlock(LoopOrBlock::LOOP, l));
+                }
+            } else {
+                cout << "is a block : " << (*w).fst << endl;
+                if (Loop::of((*w).snd->lob.block) == l){
+                    cout << "same loop" << endl;
+                    auto tag = (*w).fst;
+                    W->put(tag,new LoopBlock(LoopOrBlock::LOOP, l));
+                }
+            }
+        }
+        cout << "after count: " << W->count() << endl;
+    }
+
+    AbstractCacheSetState* clone() override { return new CompoundCacheSetState(*this); }
+    
+    int compare(const AbstractCacheSetState& other) const override;
+    
+    void print(elm::io::Output &output) override;
+    
+    inline ListMap<int,LoopBlock*>* getW(){ return W; }
+private:
+    CacheSetState* cs;
+    ListMap<int,LoopBlock*>* W;
+};
+
+
+#else
 
 class CompoundCacheSetState: public AbstractCacheSetState {
 public:
@@ -114,8 +239,7 @@ private:
     ListMap<int,Block*> W;
 };
 
-
-
+#endif
 
 
 
