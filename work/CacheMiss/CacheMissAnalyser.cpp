@@ -201,8 +201,28 @@ void CacheMissProcessor::kickedByP() {
                     // retrieve css
                     auto css = *SAVEDP(bbp);
 
+                    if (bbp->tags().count() > 0){
+                        DEBUGK("- This bbp contains the following entries:" << endl);
+                        for (auto acs: *css->getSavedCacheSets()){
+                            DEBUGK(" - "; acs->print(cout); cout << endl);
+                        }
+                    }
+
                     DEBUGK("- The kickers are:" << endl);
 #ifdef newKickers
+                    // search in every of the bbp's entry states
+                    for (auto acs: *css->getSavedCacheSets()){
+                        // static cast is mandatory
+                        auto ccss = static_cast<const CompoundCacheSetState&>(*acs);
+                        // search in every entry states' W list to see if the tags of the current bbp have been kicked
+                        auto w = ccss.getW();
+                        for (auto p: w->pairs()){
+                            // if p.fst is a tag that belongs to bbp, p.snd is a kicker
+                            if (bbp->tags().contains(p.fst)){
+                                (*KICKERS(bbp)).add(p.snd);
+                            }
+                        }
+                    }
                     for (auto k: (*KICKERS(bbp))){
                         if (k->type == LoopOrBlock::BLOCK){
                             DEBUGK(" - " << k->lob.block << endl);

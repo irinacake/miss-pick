@@ -157,15 +157,9 @@ public:
     CompoundCacheSetState(const CompoundCacheSetState& other) {
         cs = other.cs->clone();
         W = new ListMap<int,LoopBlock*>();
-
-        for (auto x: *other.W){
-
-        }
-
-
         auto w = other.W->pairs().begin();
         for (; w != other.W->pairs().end(); ++w) {
-            W->put((*w).fst,(*w).snd->clone());
+            W->put((*w).fst,(*w).snd);
         }
     }
 
