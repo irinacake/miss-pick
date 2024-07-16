@@ -1,9 +1,10 @@
 #include "AbstractCacheSetState.h"
 
 
-// #ifdef newKickers
+#ifdef newKickers
 // p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS("KICKERS");
-// #endif
+p::id<ListMap<int,LoopBlock*>> WIPEOUT("WIPEOUT");
+#endif
 
 
 elm::io::Output &operator<<(elm::io::Output &output, AbstractCacheSetState &state) {
