@@ -133,7 +133,7 @@ struct LoopBlock {
 class LoopBlockComparator {
     public:
     int doCompare(const LoopBlock *object1, const LoopBlock *object2) const {
-        cout << "compare called" << endl;
+        //cout << "compare called" << endl;
         if (object1->type == object2->type) {
             if (object1->type == LoopOrBlock::BLOCK){
                 return object1->lob.block - object2->lob.block;
@@ -176,25 +176,20 @@ public:
     int update(int toAddTag, Block* b) override;
     int update(int toAddTag, BBP* b) override;
     void reduce(otawa::Loop* l) override {
-        cout << "reducing: " << W->count() << endl;
         auto w = W->pairs().begin();
         for (; w != W->pairs().end(); ++w) {
             if ( (*w).snd->type == LoopOrBlock::LOOP ){
-                cout << "is a loop" << endl;
                 if ((*w).snd->lob.loop->parent() == l){
                     auto tag = (*w).fst;
                     W->put(tag, new LoopBlock(LoopOrBlock::LOOP, l));
                 }
             } else {
-                cout << "is a block : " << (*w).fst << endl;
                 if (Loop::of((*w).snd->lob.block) == l){
-                    cout << "same loop" << endl;
                     auto tag = (*w).fst;
                     W->put(tag,new LoopBlock(LoopOrBlock::LOOP, l));
                 }
             }
         }
-        cout << "after count: " << W->count() << endl;
     }
 
     AbstractCacheSetState* clone() override { return new CompoundCacheSetState(*this); }

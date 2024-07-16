@@ -11,7 +11,7 @@
  * This code processor sets up several properties:
  * - SAVED / SAVEDP (based on projection) mapped on Block* / BBP* that provides the possible entry states of the cache
  * - KICKERS mapped on BBP* (projection only) that provides a list of Block* that evicted this BBP* (regardless of how many tags it possesses)
- * - MISSVALUE mapped on ??? (TODO) that provides how many misses does ??? has
+ * - MISSVALUE mapped on ??? (TODO) that provides how many misses does ??? have
  * 
  * @ingroup cachemiss
  */
@@ -1101,6 +1101,12 @@ void CacheMissProcessor::processAll(WorkSpace *ws) {
     } else {
         // Non-projection does not have a kick analysis function
     }
+
+#ifdef newKickers
+    cout << "\nNew Kickers edition" << endl;
+#else
+    cout << "\nbase edition" << endl;
+#endif
 
 }
 

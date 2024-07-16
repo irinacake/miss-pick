@@ -87,10 +87,8 @@ int CompoundCacheSetState::update(int toAddTag, BBP* b) {
         // someone was kicked, add it to W
         W->put(k, new LoopBlock(LoopOrBlock::BLOCK,b->oldBB()));// when optimising with merge,
         // there needs to be a list initialisation here 
-        cout << "Kicked someone, adding to W" << endl;
         if (W->hasKey(toAddTag)){
             // if the key is in the W, then it was kicked (by the instruction few lines above in a previous call), but is now loaded back in
-            cout << "I was kicked" << endl;
             (*KICKERS(b)).insert(W->get(toAddTag));
             W->remove(toAddTag);
         }
@@ -100,10 +98,6 @@ int CompoundCacheSetState::update(int toAddTag, BBP* b) {
 
 int CompoundCacheSetState::compare(const AbstractCacheSetState& other) const {
     auto& castedOther = static_cast<const CompoundCacheSetState&>(other);
-    // cout << "ccss1 : " << *this->cs << endl;
-    // cout << "ccss2 : " << *castedOther.cs << endl;
-    // cout << "ccss1 count : " << this->W->count() << endl;
-    // cout << "ccss2 count : " << castedOther.W->count() << endl;
     int cscmp = cs->compare(*castedOther.cs);
     if (cscmp == 0) {
         auto a = W->pairs().begin();
@@ -119,7 +113,6 @@ int CompoundCacheSetState::compare(const AbstractCacheSetState& other) const {
                     }
                 } else {
                     if ((*a).snd->lob.loop != (*b).snd->lob.loop){
-                        //cout << (*b).snd->lob.loop << endl;
                         return (*a).snd->lob.loop->address() - (*b).snd->lob.loop->address();
                     }
                 }
@@ -161,9 +154,7 @@ int CompoundCacheSetState::update(int toAddTag, Block* b) {
         // someone was kicked, add it to W
         W.put(k,b);// when optimising with merge,
         // there needs to be a list initialisation here 
-        cout << "Kicked someone, adding to W" << endl;
         if (W.hasKey(toAddTag)){
-            cout << "I was kicked" << endl;
             // if the key is in the W, then it was kicked (by the instruction few lines above in a previous call), but is now loaded back in
             W.remove(toAddTag);
         }
