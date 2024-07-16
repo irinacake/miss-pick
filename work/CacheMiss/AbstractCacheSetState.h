@@ -53,6 +53,7 @@ public:
 #endif
     virtual AbstractCacheSetState* clone() = 0;
     virtual int compare(const AbstractCacheSetState& other) const = 0;
+    virtual int sameCs(const AbstractCacheSetState& other) const = 0;
     virtual void print(elm::io::Output &output) = 0;
     friend elm::io::Output &operator<<(elm::io::Output &output, AbstractCacheSetState &state);
 
@@ -90,6 +91,10 @@ public:
 #endif
     AbstractCacheSetState* clone() override { return new ConcreteCacheSetState(*this); }
     int compare(const AbstractCacheSetState& other) const override {
+        auto& castedOther = static_cast<const ConcreteCacheSetState&>(other);
+        return cs->compare(*castedOther.cs);
+    }
+    int sameCs(const AbstractCacheSetState& other) const override {
         auto& castedOther = static_cast<const ConcreteCacheSetState&>(other);
         return cs->compare(*castedOther.cs);
     }
@@ -147,7 +152,7 @@ class LoopBlockComparator {
 };
 
 
-extern p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS;
+// extern p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS;
 
 
 class CompoundCacheSetState: public AbstractCacheSetState {
@@ -190,6 +195,11 @@ public:
     
     int compare(const AbstractCacheSetState& other) const override;
     
+    int sameCs(const AbstractCacheSetState& other) const override {
+        auto& castedOther = static_cast<const CompoundCacheSetState&>(other);
+        return cs->compare(*castedOther.cs);
+    }
+
     void print(elm::io::Output &output) override;
     
     inline ListMap<int,LoopBlock*>* getW(){ return W; }

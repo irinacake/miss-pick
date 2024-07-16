@@ -21,7 +21,9 @@
 p::id<MultipleSetsSaver*> SAVED("SAVED");
 p::id<CacheSetsSaver*> SAVEDP("SAVEDP");
 p::id<bool> PROJECTION("PROJECTION");
-#ifndef newKickers
+#ifdef newKickers
+p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS("KICKERS");
+#else
 p::id<ListSet<Block*>> KICKERS("KICKERS");
 #endif
 p::id<int> MISSVALUE("MISSVALUE");
@@ -210,6 +212,11 @@ void CacheMissProcessor::kickedByP() {
 
                     DEBUGK("- The kickers are:" << endl);
 #ifdef newKickers
+
+                    // With new  singular W :
+                    // no need for the FOR loop
+                    // just get the W through the property from the BBP
+
                     // search in every of the bbp's entry states
                     for (auto acs: *css->getSavedCacheSets()){
                         // static cast is mandatory
@@ -988,10 +995,17 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     float moys[nbSets];
     int bbCount[nbSets];
     int usedBbCount[nbSets];
+
+    int wmins[nbSets];
+    int wmaxs[nbSets];
+    float wmoys[nbSets];
     for (int i = 0; i < nbSets; i++){
         mins[i] = type_info<int>::max;
         maxs[i] = 0;
         moys[i] = 0;
+        wmins[i] = type_info<int>::max;
+        wmaxs[i] = 0;
+        wmoys[i] = 0;
         bbCount[i] = 0;
         usedBbCount[i] = 0;
     }
@@ -1006,6 +1020,38 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     }
 
     for (int i = 0; i < nbSets; i++){ if (mins[i] == type_info<int>::max){ mins[i] = 0; } }
+
+    
+    for (int i = 0; i < nbSets; i++){
+        bool begin = true;
+        int diffStates;
+        int csCount;
+        AbstractCacheSetState* curCs;
+        for (auto cs : *totalStates->getSaver(i)->getSavedCacheSets()){
+            if (begin){
+                begin = false;
+                curCs = cs;
+                csCount = 1;
+                diffStates = 1;
+            } else {
+                if (cs->sameCs(*curCs) == 0) {
+                    csCount++;
+                } else {
+                    diffStates++;
+                    wmins[i] = min(wmins[i],csCount);
+                    wmaxs[i] = max(wmaxs[i],csCount);
+                    wmoys[i] += csCount;
+                    csCount = 1;
+                    curCs = cs;
+                }
+            }
+        }
+        wmins[i] = min(wmins[i],csCount);
+        wmaxs[i] = max(wmaxs[i],csCount);
+        wmoys[i] += csCount;
+        wmoys[i] /= diffStates;
+    }
+
 
     output << "\t\"bb_count\" : [";
     output << bbCount[0];
@@ -1054,6 +1100,28 @@ void CacheMissProcessor::makeStats(elm::io::Output &output) {
     output << totalList[0];
     for (int i = 1; i < nbSets; i++){
         output << "," << totalList[i];
+    }
+    output << "],\n";
+
+
+    output << "\t\"w_mins\" : [";
+    output << wmins[0];
+    for (int i = 1; i < nbSets; i++){
+        output << "," << wmins[i];
+    }
+    output << "],\n";
+
+    output << "\t\"w_maxs\" : [";
+    output << wmaxs[0];
+    for (int i = 1; i < nbSets; i++){
+        output << "," << wmaxs[i];
+    }
+    output << "],\n";
+
+    output << "\t\"w_moys\" : [";
+    output << wmoys[0];
+    for (int i = 1; i < nbSets; i++){
+        output << "," << wmoys[i];
     }
     output << "],\n";
 

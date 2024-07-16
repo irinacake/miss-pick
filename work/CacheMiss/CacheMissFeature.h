@@ -67,7 +67,9 @@ extern p::id<bool> PROJECTION;
 extern p::feature CACHE_MISS_FEATURE;
 extern p::id<MultipleSetsSaver*> SAVED;
 extern p::id<CacheSetsSaver*> SAVEDP;
-#ifndef newKickers
+#ifdef newKickers
+extern p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS;
+#else
 extern p::id<ListSet<Block*>> KICKERS;
 #endif
 extern p::id<int> MISSVALUE;

@@ -1,9 +1,9 @@
 #include "AbstractCacheSetState.h"
 
 
-#ifdef newKickers
-p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS("KICKERS");
-#endif
+// #ifdef newKickers
+// p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS("KICKERS");
+// #endif
 
 
 elm::io::Output &operator<<(elm::io::Output &output, AbstractCacheSetState &state) {
@@ -61,19 +61,6 @@ CompoundCacheSetState::CompoundCacheSetState(otawa::hard::Cache::replace_policy_
 #ifdef newKickers
 int CompoundCacheSetState::update(int toAddTag, Block* b) {
     int k = cs->update(toAddTag);
-    // //if (k == -1) {
-    //     //if (!W->hasKey(toAddTag)){
-    //     //} // else cache hit
-    // //}
-    // if (k != -1){
-    //     // someone was kicked, add it to W
-    //     W->put(k,new LoopBlock(LoopOrBlock::BLOCK,b));// when optimising with merge,
-    //     // there needs to be a list initialisation here 
-    //     if (W->hasKey(toAddTag)){
-    //         // if the key is in the W, then it was kicked (by the instruction few lines above in a previous call), but is now loaded back in
-    //         W->remove(toAddTag);
-    //     }
-    // }
     return k;
 }
 
