@@ -1,22 +1,8 @@
 import os, json
 from pathlib import Path
-import shlex
-from subprocess import Popen, PIPE
 import subprocess
-from threading import Timer
 import time
-import sys
 import math
-
-def run(cmd, timeout_sec):
-    print(cmd)
-    proc = Popen(shlex.split(cmd), stdout=PIPE, stderr=PIPE)
-    timer = Timer(timeout_sec, proc.kill)
-    try:
-        timer.start()
-        stdout, stderr = proc.communicate()
-    finally:
-        timer.cancel()
 
 
 #folders = [Path("tacle-bench/bench/app"), Path("tacle-bench/bench/kernel"), Path("tacle-bench/bench/parallel"), Path("tacle-bench/bench/sequential")]

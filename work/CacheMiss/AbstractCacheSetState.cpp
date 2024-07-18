@@ -3,7 +3,7 @@
 
 #ifdef newKickers
 // p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS("KICKERS");
-p::id<ListMap<int,LoopBlock*>> WIPEOUT("WIPEOUT");
+p::id<ListMap<int,LoopBlock*>*> WIPEOUT("WIPEOUT");
 #endif
 
 
@@ -125,7 +125,15 @@ void CompoundCacheSetState::print(elm::io::Output &output) {
     output << *cs;
     output << "<";
     for (auto a : W->pairs()){
-        output << "(" << a.fst << "," << a.snd << ")";
+        output << "(" << a.fst << ",";
+        
+        if (a.snd->type == LoopOrBlock::BLOCK){
+            cout << a.snd->lob.block;
+        } else {
+            cout << a.snd->lob.loop;
+        }
+         
+        cout << ")";
     }
     output << ">";
 }

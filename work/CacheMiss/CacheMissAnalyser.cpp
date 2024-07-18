@@ -657,16 +657,64 @@ void CacheMissProcessor::computeAnalysis(AbstractCacheSetState *initState, sys::
 struct todoItemP {
     BBP* block; // current BBP to analyse
     AbstractCacheSetState* cacheSetState; // associated cache state
+    ListMap<int,LoopBlock*>* W;
 };
 
+
+ListMap<int,LoopBlock*>* cloneW(ListMap<int,LoopBlock*>* W){
+    ListMap<int,LoopBlock*>* newW = new ListMap<int,LoopBlock*>();
+    auto w = W->pairs().begin();
+    for (; w != W->pairs().end(); ++w) {
+        newW->put((*w).fst,(*w).snd);
+    }
+    return newW;
+}
+
+bool joinW(BBP* bbp, ListMap<int,LoopBlock*>* W){
+    //TODO
+    return true;
+}
 
 class EquivTodoItemP {
 public:
     int doCompare(const todoItemP *tip1, const todoItemP *tip2) const {
-        if( tip1->cacheSetState->compare(*tip2->cacheSetState) == 0){
+        int csscmp = tip1->cacheSetState->compare(*tip2->cacheSetState);
+        if( csscmp == 0){
+            int bcmp = tip1->block->oldBB() - tip2->block->oldBB();
+            // if (bcmp == 0){
+            //     auto a = tip1->W->pairs().begin();
+            //     auto b = tip2->W->pairs().begin();
+            //     for (; a != tip1->W->pairs().end() && b != tip2->W->pairs().end(); ++a,++b) {
+            //         if ((*a).fst != (*b).fst){
+            //             return (*a).fst - (*b).fst;
+            //         }
+            //         if ((*a).snd->type == (*b).snd->type){
+            //             if ((*a).snd->type == LoopOrBlock::BLOCK){
+            //                 if ((*a).snd->lob.block->index() != (*b).snd->lob.block->index()){
+            //                     return (*a).snd->lob.block->index() - (*b).snd->lob.block->index();
+            //                 }
+            //             } else {
+            //                 if ((*a).snd->lob.loop != (*b).snd->lob.loop){
+            //                     return (*a).snd->lob.loop->address() - (*b).snd->lob.loop->address();
+            //                 }
+            //             }
+            //         } else {
+            //             return (*a).snd->type - (*b).snd->type;
+            //         }
+            //     }
+            //     if (a == tip1->W->pairs().end() && b == tip2->W->pairs().end()){
+            //         return 0;
+            //     } else {
+            //         if (a != tip1->W->pairs().end()){
+            //             return -1;
+            //         } else {
+            //             return 1;
+            //         }
+            //     }
+            // }
             return tip1->block->index() - tip2->block->index();
         }
-        return tip1->cacheSetState->compare(*tip2->cacheSetState);
+        return csscmp;
     }
 };
 
@@ -710,6 +758,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
         todoItemP* initItem = new todoItemP;
         initItem->block = pColl->graphOfSet(set)->get(maincfg)->entry();
         initItem->cacheSetState = initState->clone();
+        initItem->W = new ListMap<int,LoopBlock*>();
 
         // create the first outer item, with nullptr has a caller (stop condition)
         callStackP* initCallStack = new callStackP;
@@ -739,9 +788,12 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         todoItemP* itemToAdd = new todoItemP;;
                         itemToAdd->block = sink;
                         itemToAdd->cacheSetState = cs->clone();
+                        //auto exitbb = callstack->caller->toSynth()->callee()->exit();
+                        //itemToAdd->W = cloneW(WIPEOUT(exitbb));
                         if (!todo.top()->workingList.contains(itemToAdd)){
                             todo.top()->workingList.add(itemToAdd);
                         } else {
+                            //delete itemToAdd->W;
                             delete itemToAdd->cacheSetState;
                             delete itemToAdd;
                         }
@@ -773,7 +825,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
             //DEBUG("Before : " << **SAVEDP(curItem->block) << endl);
             // the curItem.cacheSetState is the state that gets updated, so a clone must be created in order to add it to the curItem.block's CSSaver
             AbstractCacheSetState* newState = curItem->cacheSetState->clone();
-            if (SAVEDP(curItem->block)->add(newState)){
+            if (SAVEDP(curItem->block)->add(newState) && joinW(curItem->block,curItem->W)){ 
                 //DEBUG("After : " << **SAVEDP(curItem->block) << endl);
 
                 if (curItem->block->oldBB()->isEntry()) {
@@ -784,9 +836,11 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         todoItemP* itemToAdd = new todoItemP;;
                         itemToAdd->block = sink;
                         itemToAdd->cacheSetState = newState->clone();
+                        //itemToAdd->W = cloneW(WIPEOUT(curItem->block));
                         if (!todo.top()->workingList.contains(itemToAdd)){
                             todo.top()->workingList.add(itemToAdd);
                         } else {
+
                             delete itemToAdd->cacheSetState;
                             delete itemToAdd;
                         }
@@ -881,9 +935,8 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                 DEBUG("Not adding, bypass to exit" << endl);
                 // a bypass can only be executed once per cfg (-> once per outer WL item), but only if said cfg has been entirely explored at least once
                 if ((todo.top()->exitBypass == false) && (completedCfg & (1 << curItem->block->oldBB()->cfg()->index())) ) {
-                    // a disgusting instruction to fetch the exit BBP of the current projected CFG through the regular CFG, because that information is not stored inside a projected CFG (yet?)
                     // Once the exit BBP is found, add the content of its CSSaver to the exitCS
-                    auto exitbb = pColl->graphOfSet(set)->get(curItem->block->oldBB()->cfg())->get(curItem->block->oldBB()->cfg()->exit()->index());
+                    auto exitbb = pColl->graphOfSet(set)->get(curItem->block->oldBB()->cfg())->exit();
                     DEBUG("Exitbb found : " << exitbb->oldBB()->cfg() << endl);
                     CacheSetsSaver* sState = SAVEDP(exitbb);
                     for (auto* s: *sState->getSavedCacheSets()){

@@ -98,6 +98,7 @@ public:
 	inline void removeBBP(BBP* bbp) { _BBPs[bbp->index()] = nullptr; delete(bbp); }
 	inline BBP* entry(void){ return _BBPs[0]; }
 	inline BBP* get(int x){ return _BBPs[x]; }
+	inline BBP* exit(void){ return get(_oldCFG->exit()->index()); }
 
 	inline void setInvolved() { involved = true; }
 	inline bool isInvolved() { return involved; }
