@@ -141,20 +141,30 @@ int CacheSetStatePLRU::update(int toAddTag){
     bool found = false;
     int kicked = -1;
 
+    bool empty = false;
+    int emptyPos = 0;
+
     // search loop : break before incrementing if the same tag is found
     while (pos < associativity && !found){ 
         if (toAddTag == savedState[pos]) {
             found = true;
             break;
         }
+        if (!empty && savedState[pos] == -1){
+            empty = true;
+            emptyPos = pos;
+        }
         pos++;
     }
     if (pos == 0) return -1;
     pos = pos == associativity ? associativity - 1 : pos;
     
-    if (!found) {
-        kicked = savedState[associativity-1];
-        savedState[associativity-1] = toAddTag;
+    if (!found && empty){
+        savedState[emptyPos] = toAddTag;
+        pos = emptyPos;
+    } else if (!found) {
+        kicked = savedState[pos];
+        savedState[pos] = toAddTag;
     }
 
     int tmpSstate[associativity];
