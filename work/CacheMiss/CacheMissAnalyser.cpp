@@ -402,6 +402,8 @@ void CacheMissProcessor::initStateP() {
                 if (bbp != nullptr) {
                     CacheSetsSaver* newSetsSaver = new CacheSetsSaver();
                     SAVEDP(bbp) = newSetsSaver;
+                    ListMap<int,LoopBlock*>* newW = new ListMap<int,LoopBlock*>();
+                    WIPEOUT(bbp) = newW;
                 }
             }
         }
@@ -663,14 +665,46 @@ struct todoItemP {
 
 ListMap<int,LoopBlock*>* cloneW(ListMap<int,LoopBlock*>* W){
     ListMap<int,LoopBlock*>* newW = new ListMap<int,LoopBlock*>();
-    auto w = W->pairs().begin();
-    for (; w != W->pairs().end(); ++w) {
-        newW->put((*w).fst,(*w).snd);
+    ASSERTP(W != nullptr, "nullptr in cloneW");
+    if (W->count() > 0){
+        auto w = W->pairs().begin();
+        for (; w != W->pairs().end(); ++w) {
+            newW->put((*w).fst,(*w).snd);
+        }
     }
     return newW;
 }
 
 bool joinW(BBP* bbp, ListMap<int,LoopBlock*>* W){
+    auto* bbpW = *WIPEOUT(bbp);
+
+    auto w = W->pairs().begin();
+    for (; w != W->pairs().end(); ++w) {
+
+        // reduce if the new item is a loop
+        if ((*w).snd->type == LoopOrBlock::LOOP){
+            auto l = (*w).snd->lob.loop;
+            auto bbpw = bbpW->pairs().begin();
+            for (; bbpw != bbpW->pairs().end(); ++bbpw) {
+                if ( (*bbpw).snd->type == LoopOrBlock::LOOP ){
+                    if ((*bbpw).snd->lob.loop->parent() == l){
+                        auto tag = (*bbpw).fst;
+                        W->put(tag, new LoopBlock(LoopOrBlock::LOOP, l));
+                    }
+                } else {
+                    if (Loop::of((*bbpw).snd->lob.block) == l){
+                        auto tag = (*bbpw).fst;
+                        W->put(tag,new LoopBlock(LoopOrBlock::LOOP, l));
+                    }
+                }
+            }
+        }
+        if (bbpW->hasKey((*w).fst)) {
+
+        } else {
+            bbpW->put((*w).fst,(*w).snd);
+        }
+    }
     //TODO
     return true;
 }
@@ -681,37 +715,37 @@ public:
         int csscmp = tip1->cacheSetState->compare(*tip2->cacheSetState);
         if( csscmp == 0){
             int bcmp = tip1->block->oldBB() - tip2->block->oldBB();
-            // if (bcmp == 0){
-            //     auto a = tip1->W->pairs().begin();
-            //     auto b = tip2->W->pairs().begin();
-            //     for (; a != tip1->W->pairs().end() && b != tip2->W->pairs().end(); ++a,++b) {
-            //         if ((*a).fst != (*b).fst){
-            //             return (*a).fst - (*b).fst;
-            //         }
-            //         if ((*a).snd->type == (*b).snd->type){
-            //             if ((*a).snd->type == LoopOrBlock::BLOCK){
-            //                 if ((*a).snd->lob.block->index() != (*b).snd->lob.block->index()){
-            //                     return (*a).snd->lob.block->index() - (*b).snd->lob.block->index();
-            //                 }
-            //             } else {
-            //                 if ((*a).snd->lob.loop != (*b).snd->lob.loop){
-            //                     return (*a).snd->lob.loop->address() - (*b).snd->lob.loop->address();
-            //                 }
-            //             }
-            //         } else {
-            //             return (*a).snd->type - (*b).snd->type;
-            //         }
-            //     }
-            //     if (a == tip1->W->pairs().end() && b == tip2->W->pairs().end()){
-            //         return 0;
-            //     } else {
-            //         if (a != tip1->W->pairs().end()){
-            //             return -1;
-            //         } else {
-            //             return 1;
-            //         }
-            //     }
-            // }
+            if (bcmp == 0){
+                auto a = tip1->W->pairs().begin();
+                auto b = tip2->W->pairs().begin();
+                for (; a != tip1->W->pairs().end() && b != tip2->W->pairs().end(); ++a,++b) {
+                    if ((*a).fst != (*b).fst){
+                        return (*a).fst - (*b).fst;
+                    }
+                    if ((*a).snd->type == (*b).snd->type){
+                        if ((*a).snd->type == LoopOrBlock::BLOCK){
+                            if ((*a).snd->lob.block->index() != (*b).snd->lob.block->index()){
+                                return (*a).snd->lob.block->index() - (*b).snd->lob.block->index();
+                            }
+                        } else {
+                            if ((*a).snd->lob.loop != (*b).snd->lob.loop){
+                                return (*a).snd->lob.loop->address() - (*b).snd->lob.loop->address();
+                            }
+                        }
+                    } else {
+                        return (*a).snd->type - (*b).snd->type;
+                    }
+                }
+                if (a == tip1->W->pairs().end() && b == tip2->W->pairs().end()){
+                    return 0;
+                } else {
+                    if (a != tip1->W->pairs().end()){
+                        return -1;
+                    } else {
+                        return 1;
+                    }
+                }
+            }
             return tip1->block->index() - tip2->block->index();
         }
         return csscmp;
@@ -788,12 +822,12 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         todoItemP* itemToAdd = new todoItemP;;
                         itemToAdd->block = sink;
                         itemToAdd->cacheSetState = cs->clone();
-                        //auto exitbb = callstack->caller->toSynth()->callee()->exit();
-                        //itemToAdd->W = cloneW(WIPEOUT(exitbb));
+                        auto exitbb = callstack->caller->toSynth()->callee()->exit();
+                        itemToAdd->W = cloneW(WIPEOUT(exitbb));
                         if (!todo.top()->workingList.contains(itemToAdd)){
                             todo.top()->workingList.add(itemToAdd);
                         } else {
-                            //delete itemToAdd->W;
+                            delete itemToAdd->W;
                             delete itemToAdd->cacheSetState;
                             delete itemToAdd;
                         }
@@ -836,11 +870,11 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         todoItemP* itemToAdd = new todoItemP;;
                         itemToAdd->block = sink;
                         itemToAdd->cacheSetState = newState->clone();
-                        //itemToAdd->W = cloneW(WIPEOUT(curItem->block));
+                        itemToAdd->W = cloneW(WIPEOUT(curItem->block));
                         if (!todo.top()->workingList.contains(itemToAdd)){
                             todo.top()->workingList.add(itemToAdd);
                         } else {
-
+                            delete itemToAdd->W;
                             delete itemToAdd->cacheSetState;
                             delete itemToAdd;
                         }
@@ -864,6 +898,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         todoItemP* itemToAdd = new todoItemP;
                         itemToAdd->block = curItem->block->toSynth()->callee()->entry();
                         itemToAdd->cacheSetState = newState->clone();
+                        itemToAdd->W = cloneW(WIPEOUT(curItem->block));
 
 
                         callStackP* newCallStack = new callStackP;
@@ -895,14 +930,17 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         todoItemP* itemToAdd = new todoItemP;
                         itemToAdd->block = sink;
                         itemToAdd->cacheSetState = curItem->cacheSetState->clone();
+                        itemToAdd->W = cloneW(WIPEOUT(curItem->block));
                         if (!todo.top()->workingList.contains(itemToAdd)){
 #ifdef newKickers
+                            // ??????? TODO
                             if (Loop::of(curItem->block->oldBB()) != Loop::of(sink->oldBB())){
                                 itemToAdd->cacheSetState->reduce(Loop::of(curItem->block->oldBB()));
                             }
 #endif
                             todo.top()->workingList.add(itemToAdd);
                         } else {
+                            delete itemToAdd->W;
                             delete itemToAdd->cacheSetState;
                             delete itemToAdd;
                         }
@@ -917,10 +955,13 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                         todoItemP* itemToAdd = new todoItemP;;
                         itemToAdd->block = sink;
                         itemToAdd->cacheSetState = newState->clone();
+                        itemToAdd->W = cloneW(WIPEOUT(curItem->block));
                         if (!todo.top()->workingList.contains(itemToAdd)){
                             todo.top()->workingList.add(itemToAdd);
                         } else {
+                            delete itemToAdd->W;
                             delete itemToAdd->cacheSetState;
+                            delete itemToAdd;
                         }
                     }
 
@@ -946,6 +987,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
                 }
             }
             // it is safe to delete the curItem.cacheSetState because only clones have been stored or passed to successors
+            delete curItem->W;
             delete curItem->cacheSetState;
             delete curItem;
         }

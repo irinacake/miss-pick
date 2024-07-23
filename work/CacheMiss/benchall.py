@@ -49,7 +49,7 @@ for folder in folders:
                 result = subprocess.run(['ostat', '-g', elf], stdout=subprocess.PIPE)
                 resultstr = result.stdout.decode('utf-8')
                 codesize = int(resultstr.split(":")[-1])
-                for t in [codesize]:#,0.75*codesize,0.5*codesize]:
+                for t in [codesize]:#,0.5*codesize,0.25*codesize]:
                     l = math.ceil(math.log2(t/64))
                     print("L:", l)
                     if (l < 1 or l > 8):
