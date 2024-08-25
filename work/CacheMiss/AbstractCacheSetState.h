@@ -153,7 +153,7 @@ class LoopBlockComparator {
 
 
 // extern p::id<ListSet<LoopBlock*,LoopBlockComparator>> KICKERS;
-extern p::id<ListMap<int,LoopBlock*>*> WIPEOUT;
+// extern p::id<ListMap<int,LoopBlock*>*> WIPEOUT;
 
 
 class CompoundCacheSetState: public AbstractCacheSetState {
