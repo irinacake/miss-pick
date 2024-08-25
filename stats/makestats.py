@@ -57,296 +57,97 @@ print(resultats)#.sort_values('exec_t(ms)'))
 resultats = resultats.reset_index()  # make sure indexes pair with number of rows
 
 blue_triangle = mlines.Line2D([], [], color='b', marker='^', linestyle='None',
-                          markersize=5, label='4x32')
+                          markersize=5, label='FIFO')
 
 green_star = mlines.Line2D([], [], color='g', marker='*', linestyle='None',
-                          markersize=5, label='4x256')
+                          markersize=5, label='LRU')
 
 red_plus = mlines.Line2D([], [], color='r', marker='+', linestyle='None',
-                          markersize=5, label='8x32')
-
-magenta_cross = mlines.Line2D([], [], color='m', marker='x', linestyle='None',
-                          markersize=5, label='8x256')
+                          markersize=5, label='PLRU')
 
 
 
 #graph 1:
-# states total for FIFO with all 4 configurations
+# states total based on policy
 plt.clf()
 for index, row in resultats.iterrows():
     if row['policy'] == "FIFO":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Total States Count / BB Count for FIFO for every configuration")
+        plt.plot(row['bb_cnt_avg'],row['s_total'],'b^')
+    if row['policy'] == "LRU":
+        plt.plot(row['bb_cnt_avg'],row['s_total'],'g*')
+    if row['policy'] == "PLRU":
+        plt.plot(row['bb_cnt_avg'],row['s_total'],'r+')
+
+plt.legend(handles=[blue_triangle, green_star, red_plus], loc='upper left')
+plt.title("Total States Count / BB Count / Policy")
 plt.xlabel("BB Count")
 plt.ylabel("Total States Count")
-plt.savefig(resultdir + "/TotalStates_FIFO")
+plt.savefig(resultdir + "/TotalStates")
+
+
+
 
 #graph 2:
-# states total for LRU with all 4 configurations
+# states input moy for FIFO with all 4 configurations
 plt.clf()
 for index, row in resultats.iterrows():
+    if row['policy'] == "FIFO":
+        plt.plot(row['bb_cnt_avg'],row['s_avg'],'b^')
     if row['policy'] == "LRU":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Total States Count / BB Count for LRU for every configuration")
+        plt.plot(row['bb_cnt_avg'],row['s_avg'],'g*')
+    if row['policy'] == "PLRU":
+        plt.plot(row['bb_cnt_avg'],row['s_avg'],'r+')
+plt.legend(handles=[blue_triangle, green_star, red_plus], loc='upper left')
+plt.title("Moy States Count / BB Count / Policy")
 plt.xlabel("BB Count")
-plt.ylabel("Total States Count")
-plt.savefig(resultdir + "/TotalStates_LRU")
+plt.ylabel("Moy States Count")
+plt.savefig(resultdir + "/StatesMoy")
 
 
 
 #graph 3:
-# states total for PLRU with all 4 configurations
+# states input max for FIFO with all 4 configurations
 plt.clf()
 for index, row in resultats.iterrows():
+    if row['policy'] == "FIFO":
+        plt.plot(row['bb_cnt_avg'],row['s_max'],'b^')
+    if row['policy'] == "LRU":
+        plt.plot(row['bb_cnt_avg'],row['s_max'],'g*')
     if row['policy'] == "PLRU":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_total'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Total States Count / BB Count for PLRU for every configuration")
+        plt.plot(row['bb_cnt_avg'],row['s_max'],'r+')
+plt.legend(handles=[blue_triangle, green_star, red_plus], loc='upper left')
+plt.title("Max States Count / BB Count / Policy")
 plt.xlabel("BB Count")
-plt.ylabel("Total States Count")
-plt.savefig(resultdir + "/TotalStates_PLRU")
+plt.ylabel("Max States Count")
+plt.savefig(resultdir + "/StatesMax")
+
 
 
 
 
 #graph 4:
-# states input moy for FIFO with all 4 configurations
-plt.clf()
-for index, row in resultats.iterrows():
-    if row['policy'] == "FIFO":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Moy States Count for a BB / BB Count for FIFO for every configuration")
-plt.xlabel("BB Count")
-plt.ylabel("Moy States Count")
-plt.savefig(resultdir + "/StatesMoy_FIFO")
-
-
-
-
-#graph 5:
-# states input moy for LRU with all 4 configurations
-plt.clf()
-for index, row in resultats.iterrows():
-    if row['policy'] == "LRU":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Moy States Count for a BB / BB Count for LRU for every configuration")
-plt.xlabel("BB Count")
-plt.ylabel("Moy States Count")
-plt.savefig(resultdir + "/StatesMoy_LRU")
-
-
-
-
-#graph 6:
-# states input moy for PLRU with all 4 configurations
-plt.clf()
-for index, row in resultats.iterrows():
-    if row['policy'] == "PLRU":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_avg'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Moy States Count for a BB / BB Count for PLRU for every configuration")
-plt.xlabel("BB Count")
-plt.ylabel("Moy States Count")
-plt.savefig(resultdir + "/StatesMoy_PLRU")
-
-
-
-
-
-#graph 7:
-# states input max for FIFO with all 4 configurations
-plt.clf()
-for index, row in resultats.iterrows():
-    if row['policy'] == "FIFO":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Max States Count for a BB / BB Count for FIFO for every configuration")
-plt.xlabel("BB Count")
-plt.ylabel("Max States Count")
-plt.savefig(resultdir + "/StatesMax_FIFO")
-
-
-
-
-#graph 8:
-# states input max for LRU with all 4 configurations
-plt.clf()
-for index, row in resultats.iterrows():
-    if row['policy'] == "LRU":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Max States Count for a BB / BB Count for LRU for every configuration")
-plt.xlabel("BB Count")
-plt.ylabel("Max States Count")
-plt.savefig(resultdir + "/StatesMax_LRU")
-
-
-
-
-#graph 9:
-# states input max for PLRU with all 4 configurations
-plt.clf()
-for index, row in resultats.iterrows():
-    if row['policy'] == "PLRU":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['s_max'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Max States Count for a BB / BB Count for PLRU for every configuration")
-plt.xlabel("BB Count")
-plt.ylabel("Max States Count")
-plt.savefig(resultdir + "/StatesMax_PLRU")
-
-
-
-#graph 10:
 # exec time for FIFO with all 4 configurations
+
 plt.clf()
 for index, row in resultats.iterrows():
-    if row['policy'] == "FIFO":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Exec time / BB Count for FIFO for every configuration")
+    if row['exec_t(ms)'] < 2700:
+        if row['policy'] == "FIFO":
+            plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'b^')
+        if row['policy'] == "LRU":
+            plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'g*')
+        if row['policy'] == "PLRU":
+            plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'r+')
+plt.legend(handles=[blue_triangle, green_star, red_plus], loc='upper left')
+plt.title("Exec time / BB Count / Policy")
 plt.xlabel("BB Count")
 plt.ylabel("Exec Time (s)")
-plt.savefig(resultdir + "/ExecTime_FIFO")
-
-
-
-#graph 11:
-# exec time for LRU with all 4 configurations
-plt.clf()
-for index, row in resultats.iterrows():
-    if row['policy'] == "LRU":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Exec time / BB Count for LRU for every configuration")
-plt.xlabel("BB Count")
-plt.ylabel("Exec Time (s)")
-plt.savefig(resultdir + "/ExecTime_LRU")
+plt.savefig(resultdir + "/ExecTime")
 
 
 
 
+'''
 
-#graph 12:
-# exec time for PLRU with all 4 configurations
-plt.clf()
-for index, row in resultats.iterrows():
-    if row['policy'] == "PLRU":
-        if row['asc'] == 4:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'b^')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'g*')
-        else:
-            if row['setc'] == 32:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'r+')
-            else:
-                plt.plot(row['bb_cnt_avg'],row['exec_t(ms)'],'mx')
-plt.legend(handles=[blue_triangle, green_star, red_plus, magenta_cross], loc='upper left')
-plt.title("Exec time / BB Count for PLRU for every configuration")
-plt.xlabel("BB Count")
-plt.ylabel("Exec Time (s)")
-plt.savefig(resultdir + "/ExecTime_PLRU")
+
+
+'''
