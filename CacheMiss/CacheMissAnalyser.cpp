@@ -808,7 +808,7 @@ void CacheMissProcessor::computeProjectedAnalysis(AbstractCacheSetState *initSta
         while (!todo.isEmpty()){
             // prevent the analysis from being too long (safety measure). The usage of i is to prevent the call to mySW every iteration of the loop
             i++;
-            if (i%1000000 == 0 && mySW.currentDelay().mins() > 30){
+            if (i%1000000 == 0 && mySW.currentDelay().mins() > 45){
                 exit_value = 1 + set;
                 break;
             }
